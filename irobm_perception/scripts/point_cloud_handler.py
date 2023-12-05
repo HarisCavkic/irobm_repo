@@ -12,6 +12,7 @@ import ros_numpy
 import numpy as np
 import open3d as o3d
 import rospy
+import pcl
 
 
 DATA_PATH = Path(__file__).parent.parent / "data"
@@ -66,46 +67,35 @@ class PCHandler():
     
 
     def callback(self, pc2_msg):
-        # numpify returns numpy ndarray that has 4 entries ['x','y','z','rgb'], where each has dim (720,1280)
-        # this is due to fact that we are processing 2d image and stereo camera calculates (using two cameras) pointcloud
-        # this means that for every pixel, i.e., (x,y)-coordinate of the image we have corresponding x,y,z relative coordinates 
-        # (x,y,z) - position in space
-        """
-        #half version (half the nr of pixels)
-        pc = ros_numpy.numpify(pc2_msg) 
-        height = pc.shape[0]
-        width = pc.shape[1]#
-        half_width = int(width / 1.2)
-        half_height = int(height / 1.5)
-        l_w = half_width // 2
-        r_w = width - (half_width //2)
-        
-        
-        l_h = half_height // 2
-        r_h = half_height * 2 - (half_height //2)
-        
-        np_points = np.zeros((half_height * half_width, 3), dtype=np.float32)
-        np_points[:, 0] = np.resize(pc['x'][:half_height, :half_width], half_height * half_width) #flattened real-world (relative to camera) x coordinate of all pixels
-        np_points[:, 1] = np.resize(pc['y'][:half_height,  :half_width], half_height * half_width) #flattened real-world (relative to camera) y coordinate of all pixels
-        np_points[:, 2] = np.resize(pc['z'][:half_height,  :half_width], half_height * half_width) #flattened real-world (relative to camera) z coordinate of all pixels
-        visualize(np_points)
-        """
 
-        points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True) 
-        
-        # Convert points to a numpy array
-        points_array = np.array(list(points))
-        
+        if not pc2_msg.is_dense:
+            rospy.logwarn('invalid points in Pointcloud!')
+
+        points_converted = self.pointCloud2_to_PointXYZRGB(pc2_msg)
+
+        points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True)
+
+        fil = points.make_passthrough_filter()
+        fil.set_filter_field_name("z")
+        fil.set_filter_limits(0.46, 1.5)
+        cloud_filtered = fil.filter()
+
         # Visualize the point cloud
-        visualize(points_array)
-
         print("Done one point")
 
     def shutdown_procedure(self):
         pass
 
 
+    def pointCloud2_to_PointXYZRGB(self, point_cloud):
+        points_list = []
+        for data in pc2.read_points(point_cloud, skip_nans=False):
+            points_list.append([data[0], data[1], data[2], data[3]])
 
+        pcl_data = pcl.PointCloud_PointXYZRGB()
+        pcl_data.from_list(points_list)
+
+        return pcl_data
 
 
 if __name__ == '__main__':
