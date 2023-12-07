@@ -44,12 +44,21 @@ class PandaMoveNode:
         except rospy.ServiceException as e:
             rospy.logerr("Service call failed: %s" % e)
 
+    def move_to_positions(self, positions, common_orientation_euler):
+        for i, position in enumerate(positions):
+            # Use common orientation for all positions except the last one
+            orientation_euler = common_orientation_euler if i == len(positions) - 1 else None
+            self.move_panda_to_position(position, orientation_euler)
+
     def move_panda_to_position(self, position, euler_angles):
         # Set the target pose for the end-effector
         target_pose = geometry_msgs.msg.Pose()
         target_pose.position.x = position[0]
         target_pose.position.y = position[1]
         target_pose.position.z = position[2]
+
+        if euler_angles == None:
+            euler_angles = [3.1415, 0.0, 0.0]
         
         # Set the orientation using Euler angles if provided
         if euler_angles is not None:
@@ -63,6 +72,33 @@ class PandaMoveNode:
         # Plan and execute the motion
         plan = self.group.go(wait=True)
 
+    def execute_traj(self, positions_list, orientations_euler_list):
+        if len(positions_list) != len(orientations_euler_list):
+            print("Positions and orientation list must have the same length")
+            return
+        waypoints = []
+        for i in range(len(positions_list)):
+            position = positions_list[i]
+            orientation_euler = orientations_euler_list[i] 
+            waypoints.append(self._create_pose(position, orientation_euler))
+
+        plan, fraction = self.group.compute_cartesian_path(waypoints, 0.01, 0.0)
+        self.group.execute(plan, wait=True)
+
+    def _create_pose(self, position, orientation_euler):
+        target_pose = geometry_msgs.msg.Pose()
+        target_pose.position.x = position[0]
+        target_pose.position.y = position[1]
+        target_pose.position.z = position[2]
+
+        if orientation_euler is not None:
+            quaternion = self.euler_to_quaternion(*orientation_euler)
+            target_pose.orientation = quaternion
+        else:
+            target_pose.orientation.w = 1.0  # Default to identity quaternion if not provided
+
+        return target_pose
+
     def run(self):
         # Set the initial position of the Panda arm in Gazebo
         initial_position = [0.3, 0.0, 1.3]  # Adjust as needed
@@ -73,6 +109,10 @@ class PandaMoveNode:
         target_position = [0.7, 0.0, 1.3]  # Adjust as needed [y, x, z]
         target_orientation = [3.1415, 0.0, 0.0] # [roll, pitch, yaw]
         self.move_panda_to_position(target_position, target_orientation)
+
+        target_pos_ls = [[0.3, 0.0, 1.3], [0.5, 0.0, 1.1], [0.5, 0.0, 1.4]]
+        target_orient = [target_orientation, target_orientation, target_orientation]
+        self.execute_traj(target_pos_ls, target_orient)
 
 if __name__ == '__main__':
     try:
