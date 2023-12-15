@@ -153,7 +153,7 @@ class PCHandler():
 
     
     def transform_to_base(self, pc_ros, stamp):
-
+        
         lookup_time = rospy.get_rostime()
         # end_time = stamp + rospy.Duration(10)
         target_frame = "panda_link0"  # base_link
@@ -164,7 +164,7 @@ class PCHandler():
             cloud_out = do_transform_cloud(pc_ros, trans)
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
             rospy.logwarn("Transform exception: %s", str(e))
-
+            cloud_out = None
         return cloud_out
     
     def segment_pcl(self, cloud_pcl, model_type, threshold=0.006):
@@ -274,3 +274,4 @@ if __name__ == '__main__':
     except rospy.ROSInterruptException as exc:
         print("Something went wront")
         print(exc)
+        exit()
