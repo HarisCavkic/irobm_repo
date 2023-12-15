@@ -4,7 +4,8 @@ import os
 import subprocess
 from pathlib import Path
 import copy
-
+import time
+import yaml 
 
 from sensor_msgs.msg import PointCloud2, PointField
 import sensor_msgs.point_cloud2 as pc2
@@ -20,7 +21,9 @@ import tf2_ros
 import pcl
 
 
+
 DATA_PATH = Path(__file__).parent.parent / "data"
+
 
 def visualize(xyz):
      # generate some neat n times 3 matrix using a variant of sync function
@@ -55,7 +58,6 @@ def visualize(xyz):
     o3d.visualization.draw_geometries([img])
     """
 
-
 class PCHandler():
     """
     has to be started with required="true"; this enshures when this task is done whole ros shuts down
@@ -63,26 +65,77 @@ class PCHandler():
 
     """
 
-    def __init__(self):
+    def __init__(self, cloudpoints_topic):
         rospy.init_node('decision_maker')
 
-        sub = rospy.Subscriber("/zed2/point_cloud/cloud_registered", PointCloud2, self.callback)
+        sub = rospy.Subscriber(cloudpoints_topic, PointCloud2, self.callback)
         #self.publisher_filtered = rospy.Publisher("perception/point_cloud/filtered_cloud")
         self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(1))
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         rospy.on_shutdown(self.shutdown_procedure)
-
+        self.save_signal = False
         #todo: need current positions of the robot to calculate the offset to the objects
-    
+        self.index = 0
+        self.transform_index =0
+
     def shutdown_procedure(self):
         pass
 
+    def save(self, pc2_msg, transform = False):
+        points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True) 
+
+        # Convert points to a numpy array
+        points_array = np.array(list(points))
+        #todo check weather this all is necessary 
+        mask = np.where(points_array[:,2 ] < 1.3, True, False)
+        mask3 = np.where(points_array[:,1 ] < 1.3, True, False)
+        mask2 = np.where(points_array[:,0 ] < 1.3, True, False)
+        mask = np.logical_and(mask, np.logical_and(mask2, mask3))
+        points_array = points_array[mask]
+
+        if transform:
+            filtered_pc2_msg = pc2.create_cloud_xyz32(pc2_msg.header, points_array)
+            stamp = pc2_msg.header.stamp
+            pc2_msg = self.transform_to_base(filtered_pc2_msg, stamp)
+
+            file_path = str(DATA_PATH / f'point_cloud_transformed{self.index}.npy')
+            self.transform_index += 1
+
+            points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True) 
+
+            # Convert points to a numpy array
+            points_array = np.array(list(points))
+        else:
+            file_path = str(DATA_PATH / f'point_cloud{self.index}.npy')
+            self.index += 1
+
+        
+        print("Its good writing")
+        #write
+
+        
+        np.save(file_path, points_array.astype(np.float16)) #save float16 => smaller memory footprint
+
+        return points_array
 
     def callback(self, pc2_msg):
 
         if not pc2_msg.is_dense:
-            rospy.logwarn('invalid points in Pointcloud!')
+            pass
+            #rospy.logwarn('invalid points in Pointcloud!')
+        
+        if not self.save_signal:
+            #if not hit save dont do anything just return
+            return
 
-        #test
+        self.save(pc2_msg)
+        points_array = self.save(pc2_msg, transform=True)
+        
+        print("Visualizing")
+        # Visualize the point cloud
+        visualize(points_array)
+        self.save_signal = False
+        """
         import time
         import yaml 
         tf_buffer = tf2_ros.Buffer()
@@ -92,32 +145,11 @@ class PCHandler():
         frames_dict = yaml.safe_load(tf_buffer.all_frames_as_yaml())
         frames_list = list(frames_dict.keys())
         #end test
-
+        
         stamp = pc2_msg.header.stamp
         data = self.transform_to_base(pc2_msg, stamp)
-
-        points_converted = self.pointCloud2_to_PointXYZRGB(data)
-
-        #why not just numpy.where?
-        fil = points_converted.make_passthrough_filter()
-        fil.set_filter_field_name("z")
-        fil.set_filter_limits(0.46, 1.5)
-        cloud_filtered = fil.filter()
-
-        print("Filtered the z axis")
-        original_size = cloud_filtered.size
-        while (cloud_filtered.size > (original_size * 40) / 100):
-            indices, plane_coeff = self.segment_pcl(cloud_filtered,
-                                                    pcl.SACMODEL_PLANE)
-            cloud_table = cloud_filtered.extract(indices, negative=False)
-            cloud_filtered = cloud_filtered.extract(indices, negative=True)
-
-
-        pc2_filtered = self.pointXYZRGB_to_pointCloud2(cloud_filtered)
-        print("Visualising")
-        visualize(pc2_filtered)
-        # Visualize the point cloud
-        print("Done one point")
+        """
+        
 
     
     def transform_to_base(self, pc_ros, stamp):
@@ -125,12 +157,14 @@ class PCHandler():
         lookup_time = rospy.get_rostime()
         # end_time = stamp + rospy.Duration(10)
         target_frame = "panda_link0"  # base_link
-        source_frame = "camera_link"
+        try:
+            trans = self.tf_buffer.lookup_transform(target_frame, pc_ros.header.frame_id,
+                                                    lookup_time, rospy.Duration(1))
 
-        trans = self.tf_buffer.lookup_transform(target_frame, source_frame,
-                                                lookup_time, rospy.Duration(1))
+            cloud_out = do_transform_cloud(pc_ros, trans)
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
+            rospy.logwarn("Transform exception: %s", str(e))
 
-        cloud_out = do_transform_cloud(pc_ros, trans)
         return cloud_out
     
     def segment_pcl(self, cloud_pcl, model_type, threshold=0.006):
@@ -219,9 +253,24 @@ class PCHandler():
 
 if __name__ == '__main__':
     try:
-        pch = PCHandler()
+        simulation_topic = "/zed2/point_cloud/cloud_registered"
+        real_robot = "/zed_Camera/point_cloud/cloud_registered"
+        pch = PCHandler(cloudpoints_topic=simulation_topic)
         # dm.create_voronoi()
-        rospy.spin()
+        #rospy.spin()
+
+        while True:
+            if pch.save_signal:
+                continue
+
+            user_input = input("Press Enter: ")
+
+            if user_input.strip() == '':
+                pch.save_signal = True
+            else:
+                print("Input is not blank")
+
+            
     except rospy.ROSInterruptException as exc:
         print("Something went wront")
         print(exc)
