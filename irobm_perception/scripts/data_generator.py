@@ -254,8 +254,8 @@ class PCHandler():
 if __name__ == '__main__':
     try:
         simulation_topic = "/zed2/point_cloud/cloud_registered"
-        real_robot = "/zed_Camera/point_cloud/cloud_registered"
-        pch = PCHandler(cloudpoints_topic=simulation_topic)
+        real_robot_topic = "/zed2/zed_node/point_cloud/cloud_registered"
+        pch = PCHandler(cloudpoints_topic=real_robot_topic)
         # dm.create_voronoi()
         #rospy.spin()
 
