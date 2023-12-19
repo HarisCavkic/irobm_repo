@@ -34,10 +34,13 @@ def draw_registration_results(source, target, transformation = None):
 def visualize(xyz):
      # generate some neat n times 3 matrix using a variant of sync function
     # Pass xyz to Open3D.o3d.geometry.PointCloud and visualize
-    if not isinstance(xyz, np.ndarray):
+    if isinstance(xyz, o3d.cpu.pybind.geometry.PointCloud):
+        point_cloud = xyz
+    elif not isinstance(xyz, np.ndarray):
         xyz = point_cloud2.read_points(xyz, field_names=("x", "y", "z"), skip_nans=True)
-    point_cloud = o3d.geometry.PointCloud()
-    point_cloud.points = o3d.utility.Vector3dVector(xyz)
+        xyz = np.array(list(xyz))
+        point_cloud = o3d.geometry.PointCloud()
+        point_cloud.points = o3d.utility.Vector3dVector(xyz)
 
     # Update the visualization
     o3d.visualization.draw_geometries([point_cloud])
@@ -63,8 +66,33 @@ def visualize(xyz):
     o3d.io.write_image(str(DATA_PATH / "sync.png"), img)
     o3d.visualization.draw_geometries([img])
     """
+def combine(pcds, voxel_size = .001):#0.003
+    pcds_new = list()
+    if isinstance(pcds[0], np.ndarray):
+        for pcd in pcds:
+            pcds_new.append(o3d.utility.Vector3dVector(pcd))
+    else:
+        pcds_new = pcds
 
-def load_and_view():
+    pose_graph = o3d.pipelines.registration.PoseGraph()
+    pcd_combined = o3d.geometry.PointCloud()
+    """max_correspondence_distance_coarse = voxel_size * 15
+    max_correspondence_distance_fine = voxel_size * 1.5
+    with o3d.utility.VerbosityContextManager(
+            o3d.utility.VerbosityLevel.Debug) as cm:
+        pose_graph = full_registration(pcds_down,
+                                    max_correspondence_distance_coarse,
+                                    max_correspondence_distance_fine)"""
+    for point_id in range(len(pcds_new)):
+        #pcds[point_id].transform(pose_graph.nodes[point_id].pose)
+        pcd_combined += pcds_new[point_id]
+    
+    #visualize(pcd_combined)
+    pcd_combined_down = pcd_combined.voxel_down_sample(voxel_size=voxel_size)
+    #o3d.io.write_point_cloud("multiway_registration.pcd", pcd_combined_down)
+    visualize(pcd_combined_down)
+
+def load_and_view(): 
     pc1 = np.load(str(DATA_PATH / f'point_cloud_transformed1.npy'))
     #pc2 = np.load(str(DATA_PATH / f'point_cloud2.npy'))
     pc2 = np.load(str(DATA_PATH / f'point_cloud_transformed2.npy'))
@@ -72,7 +100,8 @@ def load_and_view():
     point_cloud1.points = o3d.utility.Vector3dVector(pc1)
     point_cloud2 = o3d.geometry.PointCloud()
     point_cloud2.points = o3d.utility.Vector3dVector(pc2)
-    draw_registration_results(point_cloud2, point_cloud1)
+    #draw_registration_results(point_cloud2, point_cloud1)
+    combine([point_cloud1, point_cloud2])
 
 class PCHandler():
     """
