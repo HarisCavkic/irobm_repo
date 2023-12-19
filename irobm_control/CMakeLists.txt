@@ -12,6 +12,16 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  interactive_markers
+  moveit_core
+  moveit_ros_planning
+  moveit_ros_planning_interface
+  moveit_ros_perception
+  rosbag
+  tf2_ros
+  tf2_eigen
+  tf2_geometry_msgs
+  moveit_visual_tools
 )
 
 ## System dependencies are found with CMake's conventions
@@ -104,9 +114,19 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES irobm_control
-#  CATKIN_DEPENDS franka_zed_gazebo roscpp rospy std_msgs
+ INCLUDE_DIRS include
+ LIBRARIES irobm_control
+ CATKIN_DEPENDS 
+  franka_zed_gazebo 
+  roscpp rospy 
+  std_msgs 
+  moveit_core
+  moveit_visual_tools
+  moveit_ros_planning_interface
+  interactive_markers
+  tf2_geometry_msgs
+DEPENDS
+  EIGEN3
 #  DEPENDS system_lib
 )
 
@@ -117,24 +137,35 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+include
   ${catkin_INCLUDE_DIRS}
+  irobm_control
+  /usr/include/eigen3
+  /opt/ros/noetic
 )
+include_directories(${THIS_PACKAGE_INCLUDE_DIRS})
+include_directories(SYSTEM ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIRS})
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/irobm_control.cpp
 # )
+add_library(RPYQuaternionConvert src/RPYQuaternionConvert.cpp)
+target_link_libraries(RPYQuaternionConvert ${catkin_LIBRARIES})
+
+add_library(robot_control src/robot_control.cpp)
+target_link_libraries(robot_control ${catkin_LIBRARIES})
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(robot_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/irobm_control_node.cpp)
+add_executable(move_robot src/move_robot.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -144,12 +175,18 @@ include_directories(
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(move_robot ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+target_link_libraries(move_robot
+  ${catkin_LIBRARIES}
+  robot_control
+  /opt/ros/noetic/lib
+  RPYQuaternionConvert
+)
 
 #############
 ## Install ##
@@ -160,10 +197,11 @@ include_directories(
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# catkin_install_python(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+catkin_install_python(PROGRAMS
+  scripts/stacking_cubes.py
+  scripts/spawn_cubes.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
