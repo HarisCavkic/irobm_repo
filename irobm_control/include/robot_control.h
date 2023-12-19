@@ -22,17 +22,21 @@ class ROBOT_CONTROL
 
     ~ROBOT_CONTROL();
 
+    void set_origin_pose();
+
     void planning_pose_goal(geometry_msgs::Pose &p);
 
     void planning_joint_goal(std::vector<double> &joint_group_position);
 
-    double planning_certain_path(std::vector<geometry_msgs::Pose> &waypoints, double eef_step, double jump_threshold);
+    double planning_certain_path(std::vector<geometry_msgs::Pose> &waypoints, double eef_step = 0.01, double jump_threshold = 0);
 
     geometry_msgs::Pose get_current_pose() const;
 
+    geometry_msgs::Pose get_origin_pose() const;
+
     void print_current_pose() const;
 
-    void arc_path(geometry_msgs::Point &center_of_circle, double radius, double radian);
+    double arc_path(geometry_msgs::Point &center_of_circle, double radius = 0.12, int times = 14);
     
     private:
     moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
