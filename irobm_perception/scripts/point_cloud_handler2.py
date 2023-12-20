@@ -13,39 +13,9 @@ import numpy as np
 import open3d as o3d
 import rospy
 
+from utils import visualize
 
 DATA_PATH = Path(__file__).parent.parent / "data"
-
-def visualize(xyz):
-    # generate some neat n times 3 matrix using a variant of sync function
-    # Pass xyz to Open3D.o3d.geometry.PointCloud and visualize
-    point_cloud = o3d.geometry.PointCloud()
-    point_cloud.points = o3d.utility.Vector3dVector(xyz)
-
-    # Update the visualization
-    o3d.visualization.draw_geometries([point_cloud])
-    
-    """pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(xyz)
-    
-    o3d.visualization.draw_geometries([pcd])"""
-
-    """
-    # convert Open3D.o3d.geometry.PointCloud to numpy array
-    xyz_load = np.asarray(pcd_load.points)
-    print('xyz_load')
-    print(xyz_load)
-
-    o3d.io.write_point_cloud(str(DATA_PATH / "sync.ply"), pcd)
-
-    # Load saved point cloud and visualize it
-    pcd_load = o3d.io.read_point_cloud(str(DATA_PATH / "sync.ply"))
-
-    # save z_norm as an image (change [0,1] range to [0,255] range with uint8 type)
-    img = o3d.geometry.Image((z_norm * 255).astype(np.uint8))
-    o3d.io.write_image(str(DATA_PATH / "sync.png"), img)
-    o3d.visualization.draw_geometries([img])
-    """
 
 
 class PCHandler():
