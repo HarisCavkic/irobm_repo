@@ -18,8 +18,15 @@ class PandaMoveNode:
         self.robot = moveit_commander.RobotCommander()
         self.group = moveit_commander.MoveGroupCommander("panda_arm")
 
-        # Initialize Gazebo service
-        self.set_model_state_service = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
+        # Check if running in simulation
+        is_simulation = False
+
+        if is_simulation:
+            # Initialize Gazebo service
+            self.set_model_state_service = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
+        else:
+            # Additional initialization for the real robot, if needed
+            pass
 
     def euler_to_quaternion(self, roll, pitch, yaw):
         quaternion = tf.transformations.quaternion_from_euler(roll, pitch, yaw)
