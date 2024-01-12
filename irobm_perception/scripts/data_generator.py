@@ -9,7 +9,6 @@ import yaml
 
 from sensor_msgs.msg import PointCloud2, PointField
 import sensor_msgs.point_cloud2 as pc2
-from tf2_sensor_msgs.tf2_sensor_msgs import do_transform_cloud
 import struct
 import ctypes
 import ros_numpy
@@ -20,7 +19,7 @@ import rospy
 import tf2_ros
 import pcl
 
-from utils import visualize
+from utils import visualize, transform_to_base
 
 
 DATA_PATH = Path(__file__).parent.parent / "data"
@@ -65,7 +64,7 @@ class PCHandler():
         if transform:
             filtered_pc2_msg = pc2.create_cloud_xyz32(pc2_msg.header, points_array)
             stamp = pc2_msg.header.stamp
-            pc2_msg = self.transform_to_base(filtered_pc2_msg, stamp)
+            pc2_msg = transform_to_base(filtered_pc2_msg, stamp, self.tf_buffer)
 
             file_path = str(DATA_PATH / f'point_cloud_transformed{self.index}.npy')
             self.transform_index += 1
@@ -96,8 +95,9 @@ class PCHandler():
         if not self.save_signal:
             #if not hit save dont do anything just return
             return
-
+        print("saving pc")
         self.save(pc2_msg)
+        print("saving transformed pc")
         points_array = self.save(pc2_msg, transform=True)
         
         print("Visualizing")
@@ -116,25 +116,12 @@ class PCHandler():
         #end test
         
         stamp = pc2_msg.header.stamp
-        data = self.transform_to_base(pc2_msg, stamp)
+        data = transform_to_base(pc2_msg, stamp, self.tf_buffer)
         """
         
 
     
-    def transform_to_base(self, pc_ros, stamp):
-        
-        lookup_time = rospy.get_rostime()
-        # end_time = stamp + rospy.Duration(10)
-        target_frame = "panda_link0"  # base_link
-        try:
-            trans = self.tf_buffer.lookup_transform(target_frame, pc_ros.header.frame_id,
-                                                    lookup_time, rospy.Duration(1))
-
-            cloud_out = do_transform_cloud(pc_ros, trans)
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-            rospy.logwarn("Transform exception: %s", str(e))
-            cloud_out = None
-        return cloud_out
+    
     
     def segment_pcl(self, cloud_pcl, model_type, threshold=0.006):
         seg = cloud_pcl.make_segmenter_normals(ksearch=50)
@@ -225,9 +212,8 @@ if __name__ == '__main__':
         simulation_topic = "/zed2/point_cloud/cloud_registered"
         real_robot_topic = "/zed2/zed_node/point_cloud/cloud_registered"
         pch = PCHandler(cloudpoints_topic=real_robot_topic)
-        # dm.create_voronoi()
         #rospy.spin()
-
+        print("starting")
         while True:
             if pch.save_signal:
                 continue

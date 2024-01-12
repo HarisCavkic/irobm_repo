@@ -18,13 +18,46 @@ from sensor_msgs import point_cloud2
 import rospy
 import tf2_ros
 import pcl
+from pcl import PointCloud
 
-from utils import visualize
+from utils import visualize, transform_to_base
 
 
 DATA_PATH = Path(__file__).parent.parent / "data"
 
+def euclidean_clustering(segmented_cloud, cloud):
+    """
+    Perform Euclidean clustering on a PointCloud_PointXYZRGB object.
 
+    Parameters:
+    - segmented_cloud: pcl._pcl.PointCloud_PointXYZRGB object.
+
+    Returns:
+    - clusters: List of numpy arrays, each representing a cluster.
+    """
+
+    # Convert PCL PointCloud to numpy array
+    cloud_np = np.asarray(segmented_cloud)
+
+    # Create a PCL EuclideanClusterExtraction object
+    ec = cloud.make_EuclideanClusterExtraction()
+
+    # Set the cluster tolerance (adjust based on your data)
+    ec.set_ClusterTolerance(0.02)
+
+    # Set the minimum and maximum cluster size (adjust based on your data)
+    ec.set_MinClusterSize(10)
+    ec.set_MaxClusterSize(30)
+
+    cluster_indices = ec.Extract()
+
+    # Extract clusters from the original cloud using indices
+    clusters = []
+    for indices in cluster_indices:
+        cluster_points = np.asarray(cloud.extract(indices))
+        clusters.append(cluster_points)
+
+    return clusters
 
 class PCHandler():
     """
@@ -64,18 +97,27 @@ class PCHandler():
         #end test
 
         stamp = pc2_msg.header.stamp
-        data = self.transform_to_base(pc2_msg, stamp)
-
+        data = transform_to_base(pc2_msg, stamp, tf_buffer)
+        if data is None:
+            print("No transformation")
+            return
+        #visualize(data)
         points_converted = self.pointCloud2_to_PointXYZRGB(data)
 
         #why not just numpy.where?
         fil = points_converted.make_passthrough_filter()
         fil.set_filter_field_name("z")
-        fil.set_filter_limits(0.46, 1.5)
+        fil.set_filter_limits(0, 1.3)
         cloud_filtered = fil.filter()
-
         print("Filtered the z axis")
+
         original_size = cloud_filtered.size
+        #visualize(self.pointXYZRGB_to_pointCloud2(cloud_filtered)
+
+        segmented_clusters = euclidean_clustering(cloud_filtered, self.pointXYZRGB_to_pointCloud2(cloud_filtered))
+        for i, cluster in enumerate(segmented_clusters):
+            print(f"Cluster {i + 1}: {cluster.shape[0]} points")
+
         while (cloud_filtered.size > (original_size * 40) / 100):
             indices, plane_coeff = self.segment_pcl(cloud_filtered,
                                                     pcl.SACMODEL_PLANE)
@@ -89,19 +131,6 @@ class PCHandler():
         # Visualize the point cloud
         print("Done one point")
 
-    
-    def transform_to_base(self, pc_ros, stamp):
-
-        lookup_time = rospy.get_rostime()
-        # end_time = stamp + rospy.Duration(10)
-        target_frame = "panda_link0"  # base_link
-        source_frame = "camera_link"
-
-        trans = self.tf_buffer.lookup_transform(target_frame, source_frame,
-                                                lookup_time, rospy.Duration(1))
-
-        cloud_out = do_transform_cloud(pc_ros, trans)
-        return cloud_out
     
     def segment_pcl(self, cloud_pcl, model_type, threshold=0.006):
         seg = cloud_pcl.make_segmenter_normals(ksearch=50)
