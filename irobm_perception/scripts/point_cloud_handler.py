@@ -4,7 +4,8 @@ import os
 import subprocess
 from pathlib import Path
 import copy
-
+import actionlib
+from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse
 
 from sensor_msgs.msg import PointCloud2, PointField
 import sensor_msgs.point_cloud2 as pc2
@@ -22,8 +23,8 @@ from pcl import PointCloud
 
 from utils import visualize, transform_to_base
 
-
 DATA_PATH = Path(__file__).parent.parent / "data"
+
 
 def euclidean_clustering(segmented_cloud, cloud):
     """
@@ -59,6 +60,7 @@ def euclidean_clustering(segmented_cloud, cloud):
 
     return clusters
 
+
 class PCHandler():
     """
     has to be started with required="true"; this enshures when this task is done whole ros shuts down
@@ -68,43 +70,80 @@ class PCHandler():
 
     def __init__(self):
         rospy.init_node('decision_maker')
-
-        sub = rospy.Subscriber("/zed2/point_cloud/cloud_registered", PointCloud2, self.callback)
-        #self.publisher_filtered = rospy.Publisher("perception/point_cloud/filtered_cloud")
+        self.sub = rospy.Subscriber("/zed2/point_cloud/cloud_registered", PointCloud2, self.callback)
+        self.service = rospy.ServiceProxy('/move_to', MoveTo)
         self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(1))
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         rospy.on_shutdown(self.shutdown_procedure)
 
-        #todo: need current positions of the robot to calculate the offset to the objects
-    
+        self.positions = [...]
+        self.current_cloud = None
+
+        # initial setup
+        self.check_service_and_process_positions()
+        # todo: need current positions of the robot to calculate the offset to the objects
+
     def shutdown_procedure(self):
         pass
 
+    def save_cloud(self, cloud):
+        pass
+
+    def do_cloud_preproc(self):
+        pass
+
+    def check_service_and_process_positions(self):
+        rospy.wait_for_service('/move_to')
+        for position in self.positions:
+            self.move_to_position_and_wait(position)
+            self.process_received_cloud()
+
+        self.do_cloud_preproc()
+
+    def move_to_position_and_wait(self, position):
+        # Make sure to define the MoveTo service message format
+        rospy.wait_for_service('/move_to')
+        try:
+            # todo adjust
+            move_to_request = MoveTo()  # Modify with actual request format
+            move_to_request.position = position  # Modify according to the actual service message fields
+            response = self.service(move_to_request)  # this is blocking operation
+
+            # Wait for the service to complete
+            # Implement any specific waiting logic here if required
+        except rospy.ServiceException as e:
+            rospy.logerr(f"Service call failed: {e}")
+
+    def process_received_cloud(self):
+        if self.current_cloud:
+            self.save_cloud(self.current_cloud)
+            self.current_cloud = None
 
     def callback(self, pc2_msg):
 
         if not pc2_msg.is_dense:
             rospy.logwarn('invalid points in Pointcloud!')
 
-        #test
+        # test
         import time
-        import yaml 
+        import yaml
         tf_buffer = tf2_ros.Buffer()
         tf_listener = tf2_ros.TransformListener(tf_buffer)
         time.sleep(5.0)
 
         frames_dict = yaml.safe_load(tf_buffer.all_frames_as_yaml())
         frames_list = list(frames_dict.keys())
-        #end test
+        # end test
 
         stamp = pc2_msg.header.stamp
         data = transform_to_base(pc2_msg, stamp, tf_buffer)
         if data is None:
             print("No transformation")
             return
-        #visualize(data)
+        # visualize(data)
         points_converted = self.pointCloud2_to_PointXYZRGB(data)
 
-        #why not just numpy.where?
+        # why not just numpy.where?
         fil = points_converted.make_passthrough_filter()
         fil.set_filter_field_name("z")
         fil.set_filter_limits(0, 1.3)
@@ -112,7 +151,7 @@ class PCHandler():
         print("Filtered the z axis")
 
         original_size = cloud_filtered.size
-        #visualize(self.pointXYZRGB_to_pointCloud2(cloud_filtered)
+        # visualize(self.pointXYZRGB_to_pointCloud2(cloud_filtered)
 
         segmented_clusters = euclidean_clustering(cloud_filtered, self.pointXYZRGB_to_pointCloud2(cloud_filtered))
         for i, cluster in enumerate(segmented_clusters):
@@ -124,14 +163,12 @@ class PCHandler():
             cloud_table = cloud_filtered.extract(indices, negative=False)
             cloud_filtered = cloud_filtered.extract(indices, negative=True)
 
-
         pc2_filtered = self.pointXYZRGB_to_pointCloud2(cloud_filtered)
         print("Visualising")
         visualize(pc2_filtered)
         # Visualize the point cloud
         print("Done one point")
 
-    
     def segment_pcl(self, cloud_pcl, model_type, threshold=0.006):
         seg = cloud_pcl.make_segmenter_normals(ksearch=50)
         print("Filtered the z axis2")
@@ -151,7 +188,7 @@ class PCHandler():
             exit(0)
 
         return indices, coefficients
-    
+
     def pointCloud2_to_PointXYZRGB(self, point_cloud):
         points_list = []
         for data in pc2.read_points(point_cloud, skip_nans=False):
