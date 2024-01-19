@@ -55,7 +55,7 @@ class PCHandler():
         # Convert points to a numpy array
         points_array = np.array(list(points))
         #todo check weather this all is necessary 
-        mask = np.where(points_array[:,2 ] < w, True, False)
+        mask = np.where(points_array[:,2 ] < 1.3, True, False)
         mask3 = np.where(points_array[:,1 ] < 1.3, True, False)
         mask2 = np.where(points_array[:,0 ] < 1.3, True, False)
         mask = np.logical_and(mask, np.logical_and(mask2, mask3))
