@@ -30,7 +30,7 @@ class PandaMoveNode:
             # Additional initialization for the real robot, if needed
             pass
 
-        self.move_to = rospy.Service('/ove_to', MoveTo, self.move_to_handler)
+        self.move_to = rospy.Service('/move_to', MoveTo, self.move_to_handler)
 
 
     def move_to_handler(self, req):

@@ -60,6 +60,7 @@ add_service_files(
   srv
   FILES
   MoveTo.srv
+  BasicTraj.srv
 )
 
 ## Generate actions in the 'action' folder
