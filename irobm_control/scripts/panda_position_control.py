@@ -21,7 +21,7 @@ class PandaMoveNode:
         self.group = moveit_commander.MoveGroupCommander("panda_arm")
 
         # Check if running in simulation
-        is_simulation = False
+        is_simulation = True
 
         if is_simulation:
             # Initialize Gazebo service
@@ -164,12 +164,12 @@ class PandaMoveNode:
         self.execute_traj(target_pos_ls, target_orient)
 
 if __name__ == '__main__':
-    #try:
-    #    panda_move_node = PandaMoveNode()
-    #    panda_move_node.run()
-    #except rospy.ROSInterruptException:
-    #    pass
-    rospy.init_node('irobm_control')
-    panda_move_node = PandaMoveNode()
-    rospy.spin()
+    try:
+        panda_move_node = PandaMoveNode()
+        panda_move_node.run()
+    except rospy.ROSInterruptException:
+        pass
+    # rospy.init_node('irobm_control')
+    # panda_move_node = PandaMoveNode()
+    # rospy.spin()
 
