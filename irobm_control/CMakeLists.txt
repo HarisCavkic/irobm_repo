@@ -8,10 +8,12 @@ project(irobm_control)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  message_generation
   franka_zed_gazebo
   roscpp
   rospy
   std_msgs
+  geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -60,6 +62,7 @@ add_service_files(
   srv
   FILES
   MoveTo.srv
+  BasicTraj.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -70,10 +73,11 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -105,7 +109,7 @@ add_service_files(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  CATKIN_DEPENDS std_msgs franka_zed_gazebo roscpp rospy std_msgs
+  CATKIN_DEPENDS std_msgs franka_zed_gazebo roscpp rospy std_msgs message_runtime
 #  INCLUDE_DIRS include
 #  LIBRARIES irobm_control
 #  DEPENDS system_lib
@@ -165,6 +169,12 @@ include_directories(
 #   scripts/my_python_script
 #   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
+
+catkin_install_python(PROGRAMS
+  scripts/panda_gripper_control.py
+  scripts/stacking_cubes.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
