@@ -22,7 +22,15 @@ class PandaMoveNode:
         self.group = moveit_commander.MoveGroupCommander("panda_arm")
 
         # Check if running in simulation
+<<<<<<< HEAD
         self.is_simulation = True
+=======
+<<<<<<<< HEAD:irobm_control/scripts/panda_position_control.py
+        is_simulation = True
+========
+        self.is_simulation = True
+>>>>>>>> 8408b2846be43128d3262835a935e2e812a27c17:irobm_control/scripts/stacking_cubes.py
+>>>>>>> 8408b2846be43128d3262835a935e2e812a27c17
 
         if self.is_simulation:
             # Initialize Gazebo service
@@ -179,7 +187,19 @@ if __name__ == '__main__':
         panda_move_node.run()
     except rospy.ROSInterruptException:
         pass
+<<<<<<< HEAD
     #rospy.init_node('irobm_control')
     #panda_move_node = PandaMoveNode()
     #rospy.spin()
+=======
+<<<<<<<< HEAD:irobm_control/scripts/panda_position_control.py
+    # rospy.init_node('irobm_control')
+    # panda_move_node = PandaMoveNode()
+    # rospy.spin()
+========
+    #rospy.init_node('irobm_control')
+    #panda_move_node = PandaMoveNode()
+    #rospy.spin()
+>>>>>>>> 8408b2846be43128d3262835a935e2e812a27c17:irobm_control/scripts/stacking_cubes.py
+>>>>>>> 8408b2846be43128d3262835a935e2e812a27c17
 

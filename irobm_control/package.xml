@@ -52,8 +52,13 @@
   <build_depend>franka_zed_gazebo</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
-  <build_depend>std_msgs</build_depend>
   <build_depend>message_generation</build_depend>
+  <build_depend>std_msgs</build_depend>
+<<<<<<< HEAD
+  <build_depend>message_generation</build_depend>
+=======
+  <build_depend>geometry_msgs</build_depend>
+>>>>>>> 8408b2846be43128d3262835a935e2e812a27c17
   <build_export_depend>franka_zed_gazebo</build_export_depend>
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>rospy</build_export_depend>
@@ -61,8 +66,13 @@
   <exec_depend>franka_zed_gazebo</exec_depend>
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
   <exec_depend>message_runtime</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+<<<<<<< HEAD
+  <exec_depend>message_runtime</exec_depend>
+=======
+  <exec_depend>geometry_msgs</exec_depend>
+>>>>>>> 8408b2846be43128d3262835a935e2e812a27c17
 
 
   <!-- The export tag contains other, unspecified, tags -->
