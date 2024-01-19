@@ -6,6 +6,7 @@ import tf
 import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
+import math
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Point
@@ -21,16 +22,16 @@ class PandaMoveNode:
         self.group = moveit_commander.MoveGroupCommander("panda_arm")
 
         # Check if running in simulation
-        is_simulation = False
+        self.is_simulation = True
 
-        if is_simulation:
+        if self.is_simulation:
             # Initialize Gazebo service
             self.set_model_state_service = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
         else:
             # Additional initialization for the real robot, if needed
             pass
 
-        self.move_to = rospy.Service('/ove_to', MoveTo, self.move_to_handler)
+        self.move_to = rospy.Service('/move_to', MoveTo, self.move_to_handler)
 
 
     def move_to_handler(self, req):
@@ -151,25 +152,34 @@ class PandaMoveNode:
     def run(self):
         # Set the initial position of the Panda arm in Gazebo
         initial_position = [0.3, 0.0, 1.3]  # Adjust as needed
-        self.set_model_state(None, None)  # Clear any previous state
-        self.set_model_state(None, None)  # Set initial state
+        if self.is_simulation:
+            self.set_model_state(None, None)  # Clear any previous state
+            self.set_model_state(None, None)  # Set initial state
 
         # Move the Panda arm to a new position using MoveIt!
-        target_position = [0.7, 0.0, 1.3]  # Adjust as needed [y, x, z]
-        target_orientation = [3.1415, 0.0, 0.0] # [roll, pitch, yaw]
+        if self.is_simulation:
+            target_position = [0.7, 0.0, 1.3]  # Adjust as needed [y, x, z]
+            target_orientation = [math.pi, 0.0, 0.0] # [roll, pitch, yaw]
+        else:
+            target_position = [0.7, 0.0, 0.5] # right robot axis is y away from the robot, x is left of robots view and z is upwards
+            target_orientation = [math.pi, 0.0, -math.pi / 4]
         self.move_panda_to_position(target_position, target_orientation)
 
-        target_pos_ls = [[0.3, 0.0, 1.3], [0.5, 0.0, 1.1], [0.5, 0.0, 1.4]]
-        target_orient = [target_orientation, target_orientation, target_orientation]
-        self.execute_traj(target_pos_ls, target_orient)
+        if self.is_simulation:
+            target_pos_ls = [[0.3, 0.0, 1.3], [0.5, 0.0, 1.1], [0.5, 0.0, 1.4]]
+            target_orient = [target_orientation, target_orientation, target_orientation]
+        else:
+            target_pos_ls = [[0.4, 0.0, 0.2], [0.4, 0.3, 0.4], [0.5, 0.3, 0.5]]
+            target_orient = [target_orientation, target_orientation, target_orientation]
+        # self.move_to_positions(target_pos_ls, target_orient)
 
 if __name__ == '__main__':
-    #try:
-    #    panda_move_node = PandaMoveNode()
-    #    panda_move_node.run()
-    #except rospy.ROSInterruptException:
-    #    pass
-    rospy.init_node('irobm_control')
-    panda_move_node = PandaMoveNode()
-    rospy.spin()
+    try:
+        panda_move_node = PandaMoveNode()
+        panda_move_node.run()
+    except rospy.ROSInterruptException:
+        pass
+    #rospy.init_node('irobm_control')
+    #panda_move_node = PandaMoveNode()
+    #rospy.spin()
 
