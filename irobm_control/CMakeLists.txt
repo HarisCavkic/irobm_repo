@@ -55,11 +55,12 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  DIRECTORY
+  srv
+  FILES
+  MoveTo.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -104,9 +105,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
+  CATKIN_DEPENDS std_msgs franka_zed_gazebo roscpp rospy std_msgs
 #  INCLUDE_DIRS include
 #  LIBRARIES irobm_control
-#  CATKIN_DEPENDS franka_zed_gazebo roscpp rospy std_msgs
 #  DEPENDS system_lib
 )
 

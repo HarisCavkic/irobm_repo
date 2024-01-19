@@ -8,6 +8,8 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState
+from geometry_msgs.msg import Point
+from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse
 
 class PandaMoveNode:
     def __init__(self):
@@ -27,6 +29,46 @@ class PandaMoveNode:
         else:
             # Additional initialization for the real robot, if needed
             pass
+
+        self.move_to = rospy.Service('/ove_to', MoveTo, self.move_to_handler)
+
+
+    def move_to_handler(self, req):
+        position = [req.position.y, req.position.x, req.position.z]
+
+        if not req.w_orient:
+            orientation = [3.1415, 0.0, 0.0]
+        else:
+            orientation = [req.orientation[0], req.orientation[1], req.orientation]
+
+        self.move_panda_to_position(position, orientation)
+
+        response = MoveToResponse()
+        response.success = True
+        
+        return response
+
+    def basic_traj_handler(self, req):
+        position = []
+        orientation = []
+
+        for i in range(len(req.position_list)):
+            temp_pos = [req.position[i].x, req.position[i].y, req.position[i].z]
+
+            if req.w_orient:
+                temp_orient = [3.1415, 0.0, 0.0]
+            else:
+                temp_orient = [req.orientation[0], req.orientation[1], req.orientation]
+            
+            position.append(temp_pos)
+            orientation.append(temp_orient)
+
+        self.move_to_positions(position, orientation)
+
+        response = BasicTrajResponse()
+        response.success = True
+
+        return response
 
     def euler_to_quaternion(self, roll, pitch, yaw):
         quaternion = tf.transformations.quaternion_from_euler(roll, pitch, yaw)
@@ -122,8 +164,12 @@ class PandaMoveNode:
         self.execute_traj(target_pos_ls, target_orient)
 
 if __name__ == '__main__':
-    try:
-        panda_move_node = PandaMoveNode()
-        panda_move_node.run()
-    except rospy.ROSInterruptException:
-        pass
+    #try:
+    #    panda_move_node = PandaMoveNode()
+    #    panda_move_node.run()
+    #except rospy.ROSInterruptException:
+    #    pass
+    rospy.init_node('irobm_control')
+    panda_move_node = PandaMoveNode()
+    rospy.spin()
+
