@@ -110,6 +110,32 @@ class PCHandler():
     def do_cloud_preproc(self):
         pass
 
+    def combine_pointclouds(self,
+                            voxel_size=.001,
+                            visualise=False):  # voxel_size = 0.001  implies averaging points in radius of 1mm (millimeter)
+        pcds = list()
+        nr_loaded_clouds = 0  # if there is problem with loading one of the pcds we dont want index out of bounds
+        # load the data
+        for i in range(self.transform_index):
+            try:
+                pc = np.load(str(DATA_PATH / f'point_cloud_transformed{i}.npy'))
+                pcds.append(o3d.geometry.PointCloud())
+                pcds[nr_loaded_clouds].points = o3d.utility.Vector3dVector(pc)
+                nr_loaded_clouds += 1
+            except Exception as exc:
+                print(f"Something went wront when loading the pointcloud number {i}")
+                print(exc)
+
+        pcd_combined = o3d.geometry.PointCloud()
+        for point_id in range(len(pcds)):
+            # pcds[point_id].transform(pose_graph.nodes[point_id].pose) #should be used if code above (with pose graph) is used, i.e., there is transformation
+            pcd_combined += pcds[point_id]
+
+        pcd_combined_down = pcd_combined.voxel_down_sample(voxel_size=voxel_size)
+        if visualise:
+            visualize(pcd_combined_down)
+        return pcd_combined_down
+
     def check_service_and_process_positions(self):
         rospy.wait_for_service('/move_to')
         for position in self.positions:
@@ -139,7 +165,6 @@ class PCHandler():
 
     def callback(self, pc2_msg):
         self.current_cloud = pc2_msg
-
 
 
 if __name__ == '__main__':
