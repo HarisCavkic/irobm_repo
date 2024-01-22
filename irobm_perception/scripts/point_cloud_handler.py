@@ -78,7 +78,7 @@ class PCHandler():
 
         self.positions = [...]
         self.current_cloud = None
-
+        self.transform_index = 0
         # initial setup
         self.check_service_and_process_positions()
         # todo: need current positions of the robot to calculate the offset to the objects
@@ -86,8 +86,26 @@ class PCHandler():
     def shutdown_procedure(self):
         pass
 
-    def save_cloud(self, cloud):
-        pass
+    def save_cloud(self, pc2_msg):
+        pc2_msg = transform_to_base(pc2_msg, pc2_msg.header.stamp, self.tf_buffer)
+        points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True)
+
+        # Convert points to a numpy array
+        points_array = np.array(list(points))
+        # todo check weather this all is necessary
+        mask = np.where(points_array[:, 2] < 1.3, True, False)
+        mask3 = np.where(points_array[:, 1] < 1.3, True, False)
+        mask2 = np.where(points_array[:, 0] < 1.3, True, False)
+        mask = np.logical_and(mask, np.logical_and(mask2, mask3))
+        points_array = points_array[mask]
+
+        file_path = str(DATA_PATH / f'point_cloud_transformed{self.transform_index}.npy')
+        self.transform_index += 1
+
+        print("Its good writing")
+        # write
+        np.save(file_path, points_array.astype(np.float16))  # save float16 => smaller memory footprint
+        return points_array
 
     def do_cloud_preproc(self):
         pass
