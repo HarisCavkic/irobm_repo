@@ -1,0 +1,7 @@
+#Request
+geometry_msgs/Point[] position_list
+geometry_msgs/Point[] orientation_list
+bool w_orient
+---
+#Response
+bool success
