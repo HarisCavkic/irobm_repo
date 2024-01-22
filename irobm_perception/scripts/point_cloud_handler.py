@@ -46,13 +46,13 @@ class PCHandler():
     def callback(self, pc2_msg):
         self.current_cloud = pc2_msg
 
-    def check_service_and_process_positions(self):
+    def check_service_and_process_positions(self, visualize = False):
         rospy.wait_for_service('/move_to')
         for position in self.positions:
             self.move_to_position_and_wait(position)
             self.process_received_cloud()
 
-        self.do_cloud_preproc()
+        self.do_cloud_preproc(visualize)
 
     def move_to_position_and_wait(self, position):
         # Make sure to define the MoveTo service message format
@@ -97,8 +97,8 @@ class PCHandler():
     def do_cloud_preproc(self, visualize=False):
         self.combined_pcd = self.combine_pointclouds(
             visualise=True)  # visualize only for debugging otherwise its blocking
-        if visualize:
-            o3d.visualization.draw_geometries([self.combined_pcd])  # todo check weather 1.3 is good or should be lower
+
+        self.combined_pcd.paint_uniform_color([0.6, .6, .6])
 
         # remove outliers, i.e., do filtering
         self.remove_outliers(visualize)
@@ -137,7 +137,7 @@ class PCHandler():
 
         pcd_combined_down = pcd_combined.voxel_down_sample(voxel_size=voxel_size)
         if visualise:
-            visualize(pcd_combined_down)
+            o3d.visualization.draw_geometries([pcd_combined_down])  # todo check weather 1.3 is good or should be lower
         return pcd_combined_down
 
     def remove_outliers(self, visualize=False):
@@ -149,7 +149,7 @@ class PCHandler():
         if visualize:
             outliers = self.combined_pcd.select_by_index(filtered_pcd[1], invert=True)
             outliers.paint_uniform_color([1, 0, 0])
-            o3d.visualization.draw_geometries([filtered_pcd])
+            o3d.visualization.draw_geometries([final_cloud])
 
         self.combined_pcd = final_cloud
 
