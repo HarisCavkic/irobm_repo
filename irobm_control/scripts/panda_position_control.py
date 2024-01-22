@@ -97,7 +97,7 @@ class PandaMoveNode:
     def move_to_positions(self, positions, common_orientation_euler):
         for i, position in enumerate(positions):
             # Use common orientation for all positions except the last one
-            orientation_euler = common_orientation_euler if i == len(positions) - 1 else None
+            orientation_euler = common_orientation_euler[i]
             self.move_panda_to_position(position, orientation_euler)
 
     def move_panda_to_position(self, position, euler_angles):
@@ -159,7 +159,7 @@ class PandaMoveNode:
         # Move the Panda arm to a new position using MoveIt!
         if self.is_simulation:
             target_position = [0.7, 0.0, 1.3]  # Adjust as needed [y, x, z]
-            target_orientation = [math.pi, 0.0, 0.0] # [roll, pitch, yaw]
+            target_orientation = [math.pi, 0.0, -math.pi / 4] # [roll, pitch, yaw]
         else:
             target_position = [0.7, 0.0, 0.5] # right robot axis is y away from the robot, x is left of robots view and z is upwards
             target_orientation = [math.pi, 0.0, -math.pi / 4]
@@ -171,7 +171,7 @@ class PandaMoveNode:
         else:
             target_pos_ls = [[0.4, 0.0, 0.2], [0.4, 0.3, 0.4], [0.5, 0.3, 0.5]]
             target_orient = [target_orientation, target_orientation, target_orientation]
-        # self.move_to_positions(target_pos_ls, target_orient)
+        self.move_to_positions(target_pos_ls, target_orient)
 
 if __name__ == '__main__':
     try:
@@ -179,4 +179,6 @@ if __name__ == '__main__':
         panda_move_node.run()
     except rospy.ROSInterruptException:
         pass
+
+
 
