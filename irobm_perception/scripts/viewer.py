@@ -100,10 +100,10 @@ def preprocess_point_cloud(pcd, voxel_size):
 
 
 def load_and_view():
-    pc1 = np.load(str(DATA_PATH / f'point_cloud_transformed1.npy'))
+    pc1 = np.load(str(DATA_PATH / f'point_cloud_transformed0.npy'))
     # pc2 = np.load(str(DATA_PATH / f'point_cloud2.npy'))
-    pc2 = np.load(str(DATA_PATH / f'point_cloud_transformed2.npy'))
-    pc3 = np.load(str(DATA_PATH / f'point_cloud_transformed3.npy'))
+    pc2 = np.load(str(DATA_PATH / f'point_cloud_transformed1.npy'))
+    pc3 = np.load(str(DATA_PATH / f'point_cloud_transformed2.npy'))
     point_cloud1 = o3d.geometry.PointCloud()
     point_cloud1.points = o3d.utility.Vector3dVector(pc1)
     point_cloud2 = o3d.geometry.PointCloud()
