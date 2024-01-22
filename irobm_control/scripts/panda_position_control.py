@@ -35,12 +35,12 @@ class PandaMoveNode:
 
 
     def move_to_handler(self, req):
-        position = [req.position.y, req.position.x, req.position.z]
+        position = [req.position.x, req.position.y, req.position.z]
 
         if not req.w_orient:
             orientation = [3.1415, 0.0, 0.0]
         else:
-            orientation = [req.orientation[0], req.orientation[1], req.orientation]
+            orientation = [req.orientation[0], req.orientation[1], req.orientation[2]]
 
         self.move_panda_to_position(position, orientation)
 
@@ -59,10 +59,13 @@ class PandaMoveNode:
             if req.w_orient:
                 temp_orient = [3.1415, 0.0, 0.0]
             else:
-                temp_orient = [req.orientation[0], req.orientation[1], req.orientation]
+                temp_orient = [req.orientation[i].x, req.orientation[i].y, req.orientation[i].z]
             
             position.append(temp_pos)
             orientation.append(temp_orient)
+
+        if not(len(position) == len(orientation)):
+            print("Position and Orientation length are not the same")
 
         self.move_to_positions(position, orientation)
 
