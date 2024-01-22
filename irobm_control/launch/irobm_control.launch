@@ -1,3 +1,7 @@
 <launch>
-    <node name="irobm_control_node" pkg="irobm_control" type="stacking_cubes" respawn="true" output="screen"/>
+    <arg name="pkg" default="irobm_control" />
+    <arg name="executable" default="stacking_cubes.py" />
+
+
+    <node name="irobm_control_node" pkg="$(arg pkg)" type="$(arg executable)" respawn="true" output="screen"/>
 </launch>
