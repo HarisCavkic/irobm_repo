@@ -138,54 +138,7 @@ class PCHandler():
             self.current_cloud = None
 
     def callback(self, pc2_msg):
-
-        if not pc2_msg.is_dense:
-            rospy.logwarn('invalid points in Pointcloud!')
-
-        # test
-        import time
-        import yaml
-        tf_buffer = tf2_ros.Buffer()
-        tf_listener = tf2_ros.TransformListener(tf_buffer)
-        time.sleep(5.0)
-
-        frames_dict = yaml.safe_load(tf_buffer.all_frames_as_yaml())
-        frames_list = list(frames_dict.keys())
-        # end test
-
-        stamp = pc2_msg.header.stamp
-        data = transform_to_base(pc2_msg, stamp, tf_buffer)
-        if data is None:
-            print("No transformation")
-            return
-        # visualize(data)
-        points_converted = self.pointCloud2_to_PointXYZRGB(data)
-
-        # why not just numpy.where?
-        fil = points_converted.make_passthrough_filter()
-        fil.set_filter_field_name("z")
-        fil.set_filter_limits(0, 1.3)
-        cloud_filtered = fil.filter()
-        print("Filtered the z axis")
-
-        original_size = cloud_filtered.size
-        # visualize(self.pointXYZRGB_to_pointCloud2(cloud_filtered)
-
-        segmented_clusters = euclidean_clustering(cloud_filtered, self.pointXYZRGB_to_pointCloud2(cloud_filtered))
-        for i, cluster in enumerate(segmented_clusters):
-            print(f"Cluster {i + 1}: {cluster.shape[0]} points")
-
-        while (cloud_filtered.size > (original_size * 40) / 100):
-            indices, plane_coeff = self.segment_pcl(cloud_filtered,
-                                                    pcl.SACMODEL_PLANE)
-            cloud_table = cloud_filtered.extract(indices, negative=False)
-            cloud_filtered = cloud_filtered.extract(indices, negative=True)
-
-        pc2_filtered = self.pointXYZRGB_to_pointCloud2(cloud_filtered)
-        print("Visualising")
-        visualize(pc2_filtered)
-        # Visualize the point cloud
-        print("Done one point")
+        self.current_cloud = pc2_msg
 
     def segment_pcl(self, cloud_pcl, model_type, threshold=0.006):
         seg = cloud_pcl.make_segmenter_normals(ksearch=50)
