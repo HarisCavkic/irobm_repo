@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.8
 from pathlib import Path
 import copy
+import math
 
 from sensor_msgs.msg import PointCloud2, PointField
 import numpy as np
@@ -10,8 +11,9 @@ import rospy
 import tf2_ros
 import matplotlib.pyplot as plt
 from geometry_msgs.msg import Point
+from irobm_control.srv import MoveTo, MoveToResponse,  BasicTraj, MoveToRequest, BasicTrajResponse
+
 from utils import visualize, transform_to_base
-from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse
 
 DATA_PATH = Path(__file__).parent.parent / "data"
 
@@ -31,7 +33,7 @@ class PCHandler():
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         rospy.on_shutdown(self.shutdown_procedure)
 
-        self.positions = [...]
+        self.positions = [[.5,.5,1.3,[-math.pi, 0.0, -math.pi / 4], True]] #[-.5,.5,1.3,[0,0,0], False]
         self.current_cloud = None
         self.transform_index = 0
         self.combined_pcd = None
@@ -50,6 +52,7 @@ class PCHandler():
         rospy.wait_for_service('/move_to')
         for position in self.positions:
             self.move_to_position_and_wait(position)
+            exit(0)
             self.process_received_cloud()
 
         self.do_cloud_preproc(visualize)
@@ -57,12 +60,14 @@ class PCHandler():
     def move_to_position_and_wait(self, position):
         # Make sure to define the MoveTo service message format
         rospy.wait_for_service('/move_to')
-        x, y, z, orientation = position
+        x, y, z, orientation, use_orientation = position
         try:
             # todo adjust
             point = Point(x,y,z)
-            move_to_request = MoveTo()  # Modify with actual request format
+            move_to_request = MoveToRequest()  # Modify with actual request format
             move_to_request.position = point  # Modify according to the actual service message fields
+            move_to_request.orientation = orientation
+            move_to_request.w_orient = use_orientation
             response = self.service(move_to_request)  # this is blocking operation
 
             # Wait for the service to complete
