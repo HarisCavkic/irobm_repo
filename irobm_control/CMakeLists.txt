@@ -172,7 +172,7 @@ include_directories(
 
 catkin_install_python(PROGRAMS
   scripts/panda_gripper_control.py
-  scripts/stacking_cubes.py
+  scripts/panda_position_control.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
