@@ -15,13 +15,13 @@ from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajRespon
 class PandaMoveNode:
     def __init__(self):
         moveit_commander.roscpp_initialize(sys.argv)
-        rospy.init_node('panda_move_node', anonymous=True)
 
         # Initialize MoveIt!
         self.robot = moveit_commander.RobotCommander()
         self.group = moveit_commander.MoveGroupCommander("panda_arm")
 
         # Check if running in simulation
+        # in the simulation all z-values have to be increased by 0.787 due to the table
         self.is_simulation = True
 
         if self.is_simulation:
@@ -32,6 +32,7 @@ class PandaMoveNode:
             pass
 
         self.move_to = rospy.Service('/move_to', MoveTo, self.move_to_handler)
+        self.basic_traj = rospy.Service('basic_traj', BasicTraj, self.basic_traj_handler)
 
 
     def move_to_handler(self, req):
@@ -177,11 +178,10 @@ class PandaMoveNode:
         self.move_to_positions(target_pos_ls, target_orient)
 
 if __name__ == '__main__':
-    try:
-        panda_move_node = PandaMoveNode()
-        panda_move_node.run()
-    except rospy.ROSInterruptException:
-        pass
+    rospy.init_node('panda_move_node')
+    position_class = PandaMoveNode()
+    rospy.spin()
+
 
 
 
