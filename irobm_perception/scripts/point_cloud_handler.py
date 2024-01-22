@@ -9,7 +9,7 @@ from sensor_msgs import point_cloud2
 import rospy
 import tf2_ros
 import matplotlib.pyplot as plt
-
+from geometry_msgs.msg import Point
 from utils import visualize, transform_to_base
 from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse
 
@@ -46,7 +46,7 @@ class PCHandler():
     def callback(self, pc2_msg):
         self.current_cloud = pc2_msg
 
-    def check_service_and_process_positions(self, visualize = False):
+    def check_service_and_process_positions(self, visualize=False):
         rospy.wait_for_service('/move_to')
         for position in self.positions:
             self.move_to_position_and_wait(position)
@@ -57,10 +57,12 @@ class PCHandler():
     def move_to_position_and_wait(self, position):
         # Make sure to define the MoveTo service message format
         rospy.wait_for_service('/move_to')
+        x, y, z, orientation = position
         try:
             # todo adjust
+            point = Point(x,y,z)
             move_to_request = MoveTo()  # Modify with actual request format
-            move_to_request.position = position  # Modify according to the actual service message fields
+            move_to_request.position = point  # Modify according to the actual service message fields
             response = self.service(move_to_request)  # this is blocking operation
 
             # Wait for the service to complete
