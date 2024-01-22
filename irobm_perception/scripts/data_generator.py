@@ -49,6 +49,27 @@ class PCHandler():
     def shutdown_procedure(self):
         pass
 
+    def save_cloud(self, pc2_msg):
+        pc2_msg = transform_to_base(pc2_msg, pc2_msg.header.stamp, self.tf_buffer)
+        points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True)
+
+        # Convert points to a numpy array
+        points_array = np.array(list(points))
+        # todo check weather this all is necessary
+        mask = np.where(points_array[:, 2] < 1.3, True, False)
+        mask3 = np.where(points_array[:, 1] < 1.3, True, False)
+        mask2 = np.where(points_array[:, 0] < 1.3, True, False)
+        mask = np.logical_and(mask, np.logical_and(mask2, mask3))
+        points_array = points_array[mask]
+
+        file_path = str(DATA_PATH / f'point_cloud_transformed{self.transform_index}.npy')
+        self.transform_index += 1
+
+        print("Its good writing")
+        # write
+        np.save(file_path, points_array.astype(np.float16))  # save float16 => smaller memory footprint
+        return points_array
+
     def save(self, pc2_msg, transform = False):
         points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True) 
 
@@ -96,7 +117,8 @@ class PCHandler():
             #if not hit save dont do anything just return
             return
         print("saving pc")
-        self.save(pc2_msg)
+        #self.save(pc2_msg)
+        self.save_cloud(pc2_msg)
         print("saving transformed pc")
         points_array = self.save(pc2_msg, transform=True)
         
