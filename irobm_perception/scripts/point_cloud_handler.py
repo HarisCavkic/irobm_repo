@@ -1,18 +1,8 @@
 #!/usr/bin/env python3.8
-import math
-import os
-import subprocess
 from pathlib import Path
 import copy
-import actionlib
-from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse
 
 from sensor_msgs.msg import PointCloud2, PointField
-import sensor_msgs.point_cloud2 as pc2
-from tf2_sensor_msgs.tf2_sensor_msgs import do_transform_cloud
-import struct
-import ctypes
-import ros_numpy
 import numpy as np
 import open3d as o3d
 from sensor_msgs import point_cloud2
@@ -21,43 +11,9 @@ import tf2_ros
 import matplotlib.pyplot as plt
 
 from utils import visualize, transform_to_base
+from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse
 
 DATA_PATH = Path(__file__).parent.parent / "data"
-
-
-def euclidean_clustering(segmented_cloud, cloud):
-    """
-    Perform Euclidean clustering on a PointCloud_PointXYZRGB object.
-
-    Parameters:
-    - segmented_cloud: pcl._pcl.PointCloud_PointXYZRGB object.
-
-    Returns:
-    - clusters: List of numpy arrays, each representing a cluster.
-    """
-
-    # Convert PCL PointCloud to numpy array
-    cloud_np = np.asarray(segmented_cloud)
-
-    # Create a PCL EuclideanClusterExtraction object
-    ec = cloud.make_EuclideanClusterExtraction()
-
-    # Set the cluster tolerance (adjust based on your data)
-    ec.set_ClusterTolerance(0.02)
-
-    # Set the minimum and maximum cluster size (adjust based on your data)
-    ec.set_MinClusterSize(10)
-    ec.set_MaxClusterSize(30)
-
-    cluster_indices = ec.Extract()
-
-    # Extract clusters from the original cloud using indices
-    clusters = []
-    for indices in cluster_indices:
-        cluster_points = np.asarray(cloud.extract(indices))
-        clusters.append(cluster_points)
-
-    return clusters
 
 
 class PCHandler():
