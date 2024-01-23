@@ -22,7 +22,7 @@ class PandaMoveNode:
 
         # Check if running in simulation
         # in the simulation all z-values have to be increased by 0.787 due to the table
-        self.is_simulation = True
+        self.is_simulation = rospy.get_param('is_sim', True)
 
         if self.is_simulation:
             # Initialize Gazebo service
@@ -31,7 +31,7 @@ class PandaMoveNode:
             # Additional initialization for the real robot, if needed
             pass
 
-        self.move_to = rospy.Service('/irobm_control//move_to', MoveTo, self.move_to_handler)
+        self.move_to = rospy.Service('/irobm_control/move_to', MoveTo, self.move_to_handler)
         self.basic_traj = rospy.Service('/irobm_control/basic_traj', BasicTraj, self.basic_traj_handler)
 
 
