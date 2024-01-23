@@ -24,7 +24,7 @@ class PCHandler():
         self.combined_pcd = None
         self.transformations = None
         # initial setup
-        self.check_service_and_process_positions(visualize = True)
+        self.check_service_and_process_positions(visualize = False)
         # todo: need current positions of the robot to calculate the offset to the objects
 
     def shutdown_procedure(self):
@@ -39,7 +39,7 @@ class PCHandler():
     def do_cloud_preproc(self, visualize=False):
         print("Combined clouds")
         self.combined_pcd = self.combine_pointclouds(
-            visualise=True)  # visualize only for debugging otherwise its blocking
+            visualise=visualize)  # visualize only for debugging otherwise its blocking
              
         self.combined_pcd.paint_uniform_color([0.6, .6, .6])
 
@@ -58,7 +58,7 @@ class PCHandler():
         print("DB SCAN")
         segmented_cubes = self.do_dbscan(visualize)
 
-        self.transformations = self.get_transformations(segmented_cubes, visualize)
+        self.transformations = self.get_transformations(segmented_cubes, True)
 
     def combine_pointclouds(self,
                             voxel_size=.001,
@@ -91,7 +91,7 @@ class PCHandler():
 
         pcd_combined_down = pcd_combined.voxel_down_sample(voxel_size=voxel_size)
         if visualise:
-            o3d.visualization.draw_geometries([pcd_combined_down])  # todo check weather 1.3 is good or should be lower
+            o3d.visualization.draw_geometries([pcd_combined_down, coord_axes])  # todo check weather 1.3 is good or should be lower
         return pcd_combined_down
 
     def remove_outliers(self, visualize=False):
@@ -140,7 +140,9 @@ class PCHandler():
         for i in range(0, max_labels + 1):
             print("LABEL: ", i)
             indices_to_extract = np.where(labels == i)
-
+            if len(indices_to_extract[0]) < 100:
+                #cant be cube must be outliers
+                continue
             # Extract points based on indices
             segment = cubes_points_ndarray[indices_to_extract]
 
@@ -159,6 +161,7 @@ class PCHandler():
 
     def get_transformations(self, segmented_cubes, visualize=False):
         all_transformations = list()
+        coord_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
 
         for segment in segmented_cubes:
             # for safety create cube each time
@@ -179,7 +182,8 @@ class PCHandler():
                 cube_model_cloud.transform(final_transformation)
                 cube_model_cloud.paint_uniform_color([1., 0., 0.])
                 segment.paint_uniform_color([0.6, .6, .6])
-                o3d.visualization.draw_geometries([segment, cube_model_cloud])
+                coord_axes2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=final_transformation[:3,3])
+                o3d.visualization.draw_geometries([coord_axes2,segment, cube_model_cloud, coord_axes])
 
             all_transformations.append(final_transformation)
 

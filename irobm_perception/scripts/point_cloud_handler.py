@@ -66,16 +66,19 @@ class PCHandler():
     def check_service_and_process_positions(self, visualize=False):
         rospy.wait_for_service('/move_to')
         for position in self.positions:
-            print("Moving to position: ", position)
+            #todo undo
             self.move_to_position_and_wait(position)
+            #print("Should be there")
+            #rospy.sleep(2)
             self.save_signal = True
             self.process_received_cloud()
-
+        #exit(0)
         self.do_cloud_preproc(visualize)
 
     def move_to_position_and_wait(self, position):
         # Make sure to define the MoveTo service message format
         rospy.wait_for_service('/move_to')
+        print("Moving to position: ", position)
         x, y, z, orientation, use_orientation = position
         try:
             # todo adjust
@@ -85,7 +88,7 @@ class PCHandler():
             move_to_request.orientation = orientation
             move_to_request.w_orient = use_orientation
             response = self.service(move_to_request)  # this is blocking operation
-
+            return response
             # Wait for the service to complete
             # Implement any specific waiting logic here if required
         except rospy.ServiceException as e:
@@ -98,7 +101,7 @@ class PCHandler():
         self.save_cloud(self.current_cloud)
         self.current_cloud = None
 
-    def save_cloud(self, pc2_msg, test = True):
+    def save_cloud(self, pc2_msg, test = False):
         print("Saving cloud")
         points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True)
 
@@ -146,7 +149,7 @@ class PCHandler():
     def do_cloud_preproc(self, visualize=False):
         print("Combined clouds")
         self.combined_pcd = self.combine_pointclouds(
-            visualise=True)  # visualize only for debugging otherwise its blocking
+            visualise=visualize)  # visualize only for debugging otherwise its blocking
              
         self.combined_pcd.paint_uniform_color([0.6, .6, .6])
 
@@ -167,6 +170,20 @@ class PCHandler():
         segmented_cubes = self.do_dbscan(True)
 
         self.transformations = self.get_transformations(segmented_cubes, visualize)
+
+        print("Trying to go to approximated positions")
+        
+        for transformation in self.transformations:
+            position = list(transformation[:3, 3])
+            position[2] += 1.1 # todo z offset, do we need it for real robot!!!
+            param_list = [position[1], position[0], position[2]]
+            orientation = [math.pi, 0., 0]
+            param_list.append(orientation)
+            param_list.append(True)
+            response = self.move_to_position_and_wait(param_list)
+            print("Response: ", response)
+            rospy.sleep(2)
+
 
     def combine_pointclouds(self,
                             voxel_size=.001,
@@ -232,6 +249,7 @@ class PCHandler():
         self.combined_pcd = cubes_cloud
 
     def do_dbscan(self, visualize=False):
+        #todo remove small clouds
         labels = np.array(self.combined_pcd.cluster_dbscan(eps=0.005, min_points=5))
         max_labels = labels.max()
 
@@ -241,7 +259,9 @@ class PCHandler():
         for i in range(0, max_labels + 1):
             print("LABEL: ", i)
             indices_to_extract = np.where(labels == i)
-
+            if len(indices_to_extract[0]) < 100:
+                #cant be cube must be outliers
+                continue
             # Extract points based on indices
             segment = cubes_points_ndarray[indices_to_extract]
 
@@ -260,6 +280,7 @@ class PCHandler():
 
     def get_transformations(self, segmented_cubes, visualize=False):
         all_transformations = list()
+        coord_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
 
         for segment in segmented_cubes:
             # for safety create cube each time
@@ -280,7 +301,8 @@ class PCHandler():
                 cube_model_cloud.transform(final_transformation)
                 cube_model_cloud.paint_uniform_color([1., 0., 0.])
                 segment.paint_uniform_color([0.6, .6, .6])
-                o3d.visualization.draw_geometries([segment, cube_model_cloud])
+                coord_axes2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=final_transformation[:3,3])
+                o3d.visualization.draw_geometries([coord_axes2,segment, cube_model_cloud, coord_axes])
 
             all_transformations.append(final_transformation)
 
