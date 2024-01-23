@@ -31,8 +31,8 @@ class PandaMoveNode:
             # Additional initialization for the real robot, if needed
             pass
 
-        self.move_to = rospy.Service('/move_to', MoveTo, self.move_to_handler)
-        self.basic_traj = rospy.Service('basic_traj', BasicTraj, self.basic_traj_handler)
+        self.move_to = rospy.Service('/irobm_control//move_to', MoveTo, self.move_to_handler)
+        self.basic_traj = rospy.Service('/irobm_control/basic_traj', BasicTraj, self.basic_traj_handler)
 
 
     def move_to_handler(self, req):

@@ -63,6 +63,9 @@ add_service_files(
   FILES
   MoveTo.srv
   BasicTraj.srv
+  CloseGripper.srv
+  OpenGripper.srv
+  SetGripperWidth.srv
 )
 
 ## Generate actions in the 'action' folder
