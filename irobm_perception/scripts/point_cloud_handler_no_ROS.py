@@ -37,21 +37,25 @@ class PCHandler():
         self.do_cloud_preproc(visualize)
 
     def do_cloud_preproc(self, visualize=False):
+        print("Combined clouds")
         self.combined_pcd = self.combine_pointclouds(
             visualise=True)  # visualize only for debugging otherwise its blocking
-
+             
         self.combined_pcd.paint_uniform_color([0.6, .6, .6])
 
+        print("Removing outliers")
         # remove outliers, i.e., do filtering
         self.remove_outliers(visualize)
-
         # estimate the normals
+        print("estimate the normals")
         self.estimate_normals(visualize)
 
         # RANSAC Planar Segmentation, i.e., remove the desk
+        print("RANSAC")
         self.run_RANSAC_plane(visualize)
-        self.run_RANSAC_plane(visualize)
+
         # db scan rest of the cloud, i.e., segment the cubes
+        print("DB SCAN")
         segmented_cubes = self.do_dbscan(visualize)
 
         self.transformations = self.get_transformations(segmented_cubes, visualize)
@@ -62,11 +66,19 @@ class PCHandler():
         pcds = list()
         nr_loaded_clouds = 0  # if there is problem with loading one of the pcds we dont want index out of bounds
         # load the data
+        coord_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
         for i in range(self.transform_index):
             try:
                 pc = np.load(str(DATA_PATH / f'point_cloud_transformed{i}.npy'))
+                #mask = np.where(pc[:, 2] > -.7, True, False)
+                #mask = np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3)))
+                #pc = pc[mask]
                 pcds.append(o3d.geometry.PointCloud())
                 pcds[nr_loaded_clouds].points = o3d.utility.Vector3dVector(pc)
+                """o3d.visualization.draw_geometries([pcds[nr_loaded_clouds], coord_axes], zoom=0.3412,
+                                  front=[-1, 0, 0],
+                                  lookat=[0, 1, 0],
+                                  up=[0., 0, 1])"""
                 nr_loaded_clouds += 1
             except Exception as exc:
                 print(f"Something went wront when loading the pointcloud number {i}")
@@ -86,12 +98,12 @@ class PCHandler():
         """
             remove outliers, i.e., do filtering
         """
-        filtered_pcd = self.combined_pcd.remove_statistical_outlier(nb_neighbors=16, std_ratio=10)
+        filtered_pcd = self.combined_pcd.remove_statistical_outlier(nb_neighbors=16, std_ratio=5)
         final_cloud = filtered_pcd[0]
         if visualize:
             outliers = self.combined_pcd.select_by_index(filtered_pcd[1], invert=True)
             outliers.paint_uniform_color([1, 0, 0])
-            o3d.visualization.draw_geometries([final_cloud])
+            o3d.visualization.draw_geometries([final_cloud, outliers])
 
         self.combined_pcd = final_cloud
 
@@ -106,9 +118,9 @@ class PCHandler():
             o3d.visualization.draw_geometries([self.combined_pcd])
 
     def run_RANSAC_plane(self, visualize=False):
-        pt_to_plane_dist = .0005
-        plane_model, inliners = self.combined_pcd.segment_plane(distance_threshold=pt_to_plane_dist, ransac_n=3,
-                                                                num_iterations=1000)
+        pt_to_plane_dist = .003
+        plane_model, inliners = self.combined_pcd.segment_plane(distance_threshold=pt_to_plane_dist, ransac_n=5,
+                                                                num_iterations=100)
         inlier_cloud = self.combined_pcd.select_by_index(inliners)
         cubes_cloud = self.combined_pcd.select_by_index(inliners, invert=True)
 
@@ -191,7 +203,7 @@ class PCHandler():
         # only use 3 sides of the cube (not full cube is generated)
         # this is due to fact that the cubes in the scanned
         # point cloud are not full and often are lacking sides
-        cube_mesh.remove_vertices_by_index([1])
+        #cube_mesh.remove_vertices_by_index([1])
 
         # Translate the cube to center it at the origin
         # this is important for icp, as we want to get position and orientation relative to base
