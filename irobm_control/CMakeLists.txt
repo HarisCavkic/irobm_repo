@@ -22,6 +22,8 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_eigen
   tf2_geometry_msgs
   moveit_visual_tools
+  geometry_msgs
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -65,11 +67,11 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  BasicTraj.srv
+  MoveTo.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -79,10 +81,11 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -125,6 +128,7 @@ catkin_package(
   moveit_ros_planning_interface
   interactive_markers
   tf2_geometry_msgs
+  message_runtime
 DEPENDS
   EIGEN3
 #  DEPENDS system_lib
@@ -198,8 +202,8 @@ target_link_libraries(move_robot
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  scripts/stacking_cubes.py
-  scripts/spawn_cubes.py
+  scripts/panda_position_control.py
+  scripts/panda_gripper_control.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

@@ -42,6 +42,7 @@ class ROBOT_CONTROL
     moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
     geometry_msgs::Pose origin_pose;
     geometry_msgs::Pose current_pose;
+    std::vector<double> origin_joint;
 
     void move_robot(moveit::planning_interface::MoveGroupInterface::Plan &plan);
 

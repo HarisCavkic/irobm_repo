@@ -20,12 +20,13 @@ ROBOT_CONTROL::ROBOT_CONTROL()
     ROBOT_CONTROL::origin_pose.position.x = 0.307;
     ROBOT_CONTROL::origin_pose.position.y = 0;
     ROBOT_CONTROL::origin_pose.position.z = 1.376;
+    this->origin_joint = {0, -tau/8, 0, -3*tau/8, 0, tau/4, tau/8};
     ros::service::waitForService("/gazebo/set_model_state");
 }
 
 void ROBOT_CONTROL::set_origin_pose()
 {
-    ROBOT_CONTROL::planning_pose_goal(ROBOT_CONTROL::origin_pose);
+    this->planning_joint_goal(this->origin_joint);
 }
 
 void ROBOT_CONTROL::planning_pose_goal(geometry_msgs::Pose &p)
@@ -68,7 +69,7 @@ void ROBOT_CONTROL::print_current_pose() const
 {
     geometry_msgs::Quaternion q = ROBOT_CONTROL::get_current_pose().orientation;
     Eigen::Vector3d rpy = QuaternionToRPY(q)/(tau/360);
-    ROS_INFO("orientation: (%f, %f, %f, %f)\neuler angle(yzx): (%f, %f, %f)\nposition: (%f, %f, %f)", ROBOT_CONTROL::current_pose.orientation.w, 
+    ROS_INFO("orientation: (%f, %f, %f, %f)\neuler angle(xyz): (%f, %f, %f)\nposition: (%f, %f, %f)", ROBOT_CONTROL::current_pose.orientation.w, 
             ROBOT_CONTROL::current_pose.orientation.x, ROBOT_CONTROL::current_pose.orientation.y, 
             ROBOT_CONTROL::current_pose.orientation.z, rpy[0], rpy[1], rpy[2], ROBOT_CONTROL::current_pose.position.x, ROBOT_CONTROL::current_pose.position.y, 
             ROBOT_CONTROL::current_pose.position.z);
@@ -105,14 +106,16 @@ ROBOT_CONTROL::~ROBOT_CONTROL()
 double ROBOT_CONTROL::arc_path(geometry_msgs::Point &center_of_circle, double radius, int times)
 {
     geometry_msgs::Pose p = ROBOT_CONTROL::current_pose;
-    p.position.z = center_of_circle.z + radius + 0.05;
+    p.position.z = center_of_circle.z + radius + 0.115;
     p.position.y = center_of_circle.y + radius;
     p.position.x = center_of_circle.x;
     Eigen::Vector3d rpy_o = QuaternionToRPY(ROBOT_CONTROL::origin_pose.orientation);
     Eigen::Vector3d rpy(rpy_o);
     rpy[2] -= tau/4;
     p.orientation = RPYToQuaternion(rpy);
-    ROBOT_CONTROL::planning_pose_goal(p);
+    std::vector<geometry_msgs::Pose> waypoints;
+    waypoints.push_back(p);
+    // ROBOT_CONTROL::planning_pose_goal(p);
     // system("pause");
     // p = ROBOT_CONTROL::current_pose;
     // Eigen::Vector3d rpy_o = QuaternionToRPY(ROBOT_CONTROL::origin_pose.orientation);
@@ -122,8 +125,7 @@ double ROBOT_CONTROL::arc_path(geometry_msgs::Point &center_of_circle, double ra
     // p.orientation = RPYToQuaternion(rpy);
     // ROBOT_CONTROL::planning_pose_goal(p);
     // system("pause");
-    p = ROBOT_CONTROL::current_pose;
-    std::vector<geometry_msgs::Pose> waypoints;
+    // p = ROBOT_CONTROL::current_pose;
     for(int i{0};i < times;i++)
     {
         rpy = rpy_o;
