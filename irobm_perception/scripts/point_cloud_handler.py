@@ -12,8 +12,7 @@ from tf2_sensor_msgs.tf2_sensor_msgs import do_transform_cloud
 import tf2_ros
 import matplotlib.pyplot as plt
 from geometry_msgs.msg import Point
-from irobm_control.srv import MoveTo, MoveToResponse,  BasicTraj, MoveToRequest, BasicTrajResponse
-
+from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, MoveToRequest, BasicTrajResponse
 
 DATA_PATH = Path(__file__).parent.parent / "data"
 
@@ -33,10 +32,10 @@ class PCHandler():
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         rospy.on_shutdown(self.shutdown_procedure)
 
-        self.positions = [[0,.3,1.3,[3, 0., -0.8], True],
-                            [-.5,.5,1.3,[3.1415, 0.0, 0.0], True],
-                            [.5,.4,1.2,[3.1415, -0.3, -1.3], True]] 
-        
+        self.positions = [[0, .3, 1.3, [3, 0., -0.8], True],
+                          [-.5, .5, 1.3, [3.1415, 0.0, 0.0], True],
+                          [.5, .4, 1.2, [3.1415, -0.3, -1.3], True]]
+
         self.current_cloud = None
         self.transform_index = 0
         self.combined_pcd = None
@@ -50,29 +49,28 @@ class PCHandler():
         pass
 
     def callback(self, pc2_msg):
-        #self.current_cloud = pc2_msg
+        # self.current_cloud = pc2_msg
         if self.save_signal:
             try:
-                #print("Frame id: ", pc2_msg.header.frame_id)
-                transform_stamped = self.tf_buffer.lookup_transform("panda_link0", pc2_msg.header.frame_id, rospy.Time(), rospy.Duration(1.0))
+                # print("Frame id: ", pc2_msg.header.frame_id)
+                transform_stamped = self.tf_buffer.lookup_transform("panda_link0", pc2_msg.header.frame_id,
+                                                                    rospy.Time(), rospy.Duration(1.0))
                 self.current_cloud = do_transform_cloud(pc2_msg, transform_stamped)
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-                rospy.logwarn("Transform exception: %s", str(e)) 
+                rospy.logwarn("Transform exception: %s", str(e))
             finally:
                 self.save_signal = False
-
-            
 
     def check_service_and_process_positions(self, visualize=False):
         rospy.wait_for_service('/move_to')
         for position in self.positions:
-            #todo undo
+            # todo undo
             self.move_to_position_and_wait(position)
-            #print("Should be there")
-            #rospy.sleep(2)
+            # print("Should be there")
+            # rospy.sleep(2)
             self.save_signal = True
             self.process_received_cloud()
-        #exit(0)
+        # exit(0)
         self.do_cloud_preproc(visualize)
 
     def move_to_position_and_wait(self, position):
@@ -82,7 +80,7 @@ class PCHandler():
         x, y, z, orientation, use_orientation = position
         try:
             # todo adjust
-            point = Point(x,y,z)
+            point = Point(x, y, z)
             move_to_request = MoveToRequest()  # Modify with actual request format
             move_to_request.position = point  # Modify according to the actual service message fields
             move_to_request.orientation = orientation
@@ -101,7 +99,7 @@ class PCHandler():
         self.save_cloud(self.current_cloud)
         self.current_cloud = None
 
-    def save_cloud(self, pc2_msg, test = False):
+    def save_cloud(self, pc2_msg, test=False):
         print("Saving cloud")
         points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True)
 
@@ -114,16 +112,16 @@ class PCHandler():
             test.points = o3d.utility.Vector3dVector(points_array)
             coord_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
             o3d.visualization.draw_geometries([test, coord_axes], zoom=0.3,
-                                  front=[-1, 0, 0],
-                                  lookat=[0, 1, 0],
-                                  up=[0., 0, 1])
+                                              front=[-1, 0, 0],
+                                              lookat=[0, 1, 0],
+                                              up=[0., 0, 1])
         # todo check weather this all is necessary
         mask3 = np.where(points_array[:, 1] < .7, True, False)
         mask4 = np.where(points_array[:, 1] > -.7, True, False)
-        mask = np.where(points_array[:, 0]  > -.7, True, False)
+        mask = np.where(points_array[:, 0] > -.7, True, False)
         mask2 = np.where(points_array[:, 0] < .7, True, False)
-        #mask5 = np.where(points_array[:, 2] > -.5, True, False)
-        #mask = np.logical_and(mask5, np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3))))
+        # mask5 = np.where(points_array[:, 2] > -.5, True, False)
+        # mask = np.logical_and(mask5, np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3))))
         mask = np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3)))
         points_array = points_array[mask]
 
@@ -133,9 +131,9 @@ class PCHandler():
             test = o3d.geometry.PointCloud()
             test.points = o3d.utility.Vector3dVector(points_array)
             o3d.visualization.draw_geometries([test, coord_axes], zoom=0.2,
-                                    front=[-1, 0, 0],
-                                  lookat=[0, 1, 0],
-                                  up=[0., 0, 1])
+                                              front=[-1, 0, 0],
+                                              lookat=[0, 1, 0],
+                                              up=[0., 0, 1])
             # todo check weather this all is necessary
             ###END
         file_path = str(DATA_PATH / f'point_cloud_transformed{self.transform_index}.npy')
@@ -150,7 +148,7 @@ class PCHandler():
         print("Combined clouds")
         self.combined_pcd = self.combine_pointclouds(
             visualise=visualize)  # visualize only for debugging otherwise its blocking
-             
+
         self.combined_pcd.paint_uniform_color([0.6, .6, .6])
 
         print("Removing outliers")
@@ -172,10 +170,10 @@ class PCHandler():
         self.transformations = self.get_transformations(segmented_cubes, visualize)
 
         print("Trying to go to approximated positions")
-        
+
         for transformation in self.transformations:
             position = list(transformation[:3, 3])
-            position[2] += 1.1 # todo z offset, do we need it for real robot!!!
+            position[2] += 1.1  # todo z offset, do we need it for real robot!!!
             param_list = [position[1], position[0], position[2]]
             orientation = [math.pi, 0., 0]
             param_list.append(orientation)
@@ -183,7 +181,6 @@ class PCHandler():
             response = self.move_to_position_and_wait(param_list)
             print("Response: ", response)
             rospy.sleep(2)
-
 
     def combine_pointclouds(self,
                             voxel_size=.001,
@@ -220,7 +217,7 @@ class PCHandler():
         if visualize:
             outliers = self.combined_pcd.select_by_index(filtered_pcd[1], invert=True)
             outliers.paint_uniform_color([1, 0, 0])
-            o3d.visualization.draw_geometries([final_cloud,outliers])
+            o3d.visualization.draw_geometries([final_cloud, outliers])
 
         self.combined_pcd = final_cloud
 
@@ -249,10 +246,9 @@ class PCHandler():
         self.combined_pcd = cubes_cloud
 
     def do_dbscan(self, visualize=False):
-        #todo remove small clouds
+        # todo remove small clouds
         labels = np.array(self.combined_pcd.cluster_dbscan(eps=0.005, min_points=5))
         max_labels = labels.max()
-
 
         segmented_cubes = list()
         cubes_points_ndarray = np.asarray(self.combined_pcd.points)
@@ -260,7 +256,7 @@ class PCHandler():
             print("LABEL: ", i)
             indices_to_extract = np.where(labels == i)
             if len(indices_to_extract[0]) < 100:
-                #cant be cube must be outliers
+                # cant be cube must be outliers
                 continue
             # Extract points based on indices
             segment = cubes_points_ndarray[indices_to_extract]
@@ -301,8 +297,9 @@ class PCHandler():
                 cube_model_cloud.transform(final_transformation)
                 cube_model_cloud.paint_uniform_color([1., 0., 0.])
                 segment.paint_uniform_color([0.6, .6, .6])
-                coord_axes2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=final_transformation[:3,3])
-                o3d.visualization.draw_geometries([coord_axes2,segment, cube_model_cloud, coord_axes])
+                coord_axes2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1,
+                                                                                origin=final_transformation[:3, 3])
+                o3d.visualization.draw_geometries([coord_axes2, segment, cube_model_cloud, coord_axes])
 
             all_transformations.append(final_transformation)
 
@@ -326,7 +323,7 @@ class PCHandler():
         # only use 3 sides of the cube (not full cube is generated)
         # this is due to fact that the cubes in the scanned
         # point cloud are not full and often are lacking sides
-        #cube_mesh.remove_vertices_by_index([1])
+        # cube_mesh.remove_vertices_by_index([1])
 
         # Translate the cube to center it at the origin
         # this is important for icp, as we want to get position and orientation relative to base
