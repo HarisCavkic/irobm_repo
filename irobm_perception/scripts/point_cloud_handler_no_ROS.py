@@ -2,16 +2,11 @@
 from pathlib import Path
 import copy
 
-from sensor_msgs.msg import PointCloud2, PointField
 import numpy as np
 import open3d as o3d
-from sensor_msgs import point_cloud2
-import rospy
-import tf2_ros
+
 import matplotlib.pyplot as plt
 
-from utils import visualize, transform_to_base
-from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse
 
 DATA_PATH = Path(__file__).parent.parent / "data"
 
@@ -24,20 +19,12 @@ class PCHandler():
     """
 
     def __init__(self):
-        rospy.init_node('decision_maker')
-        self.sub = rospy.Subscriber("/zed2/point_cloud/cloud_registered", PointCloud2, self.callback)
-        self.service = rospy.ServiceProxy('/move_to', MoveTo)
-        self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(1))
-        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
-        rospy.on_shutdown(self.shutdown_procedure)
-
-        self.positions = [...]
         self.current_cloud = None
-        self.transform_index = 0
+        self.transform_index = 3
         self.combined_pcd = None
         self.transformations = None
         # initial setup
-        self.check_service_and_process_positions()
+        self.check_service_and_process_positions(visualize = True)
         # todo: need current positions of the robot to calculate the offset to the objects
 
     def shutdown_procedure(self):
@@ -47,52 +34,7 @@ class PCHandler():
         self.current_cloud = pc2_msg
 
     def check_service_and_process_positions(self, visualize = False):
-        rospy.wait_for_service('/move_to')
-        for position in self.positions:
-            self.move_to_position_and_wait(position)
-            self.process_received_cloud()
-
         self.do_cloud_preproc(visualize)
-
-    def move_to_position_and_wait(self, position):
-        # Make sure to define the MoveTo service message format
-        rospy.wait_for_service('/move_to')
-        try:
-            # todo adjust
-            move_to_request = MoveTo()  # Modify with actual request format
-            move_to_request.position = position  # Modify according to the actual service message fields
-            response = self.service(move_to_request)  # this is blocking operation
-
-            # Wait for the service to complete
-            # Implement any specific waiting logic here if required
-        except rospy.ServiceException as e:
-            rospy.logerr(f"Service call failed: {e}")
-
-    def process_received_cloud(self):
-        if self.current_cloud:
-            self.save_cloud(self.current_cloud)
-            self.current_cloud = None
-
-    def save_cloud(self, pc2_msg):
-        pc2_msg = transform_to_base(pc2_msg, pc2_msg.header.stamp, self.tf_buffer)
-        points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True)
-
-        # Convert points to a numpy array
-        points_array = np.array(list(points))
-        # todo check weather this all is necessary
-        mask = np.where(points_array[:, 2] < 1.3, True, False)
-        mask3 = np.where(points_array[:, 1] < 1.3, True, False)
-        mask2 = np.where(points_array[:, 0] < 1.3, True, False)
-        mask = np.logical_and(mask, np.logical_and(mask2, mask3))
-        points_array = points_array[mask]
-
-        file_path = str(DATA_PATH / f'point_cloud_transformed{self.transform_index}.npy')
-        self.transform_index += 1
-
-        print("Its good writing")
-        # write
-        np.save(file_path, points_array.astype(np.float16))  # save float16 => smaller memory footprint
-        return points_array
 
     def do_cloud_preproc(self, visualize=False):
         self.combined_pcd = self.combine_pointclouds(
@@ -108,7 +50,7 @@ class PCHandler():
 
         # RANSAC Planar Segmentation, i.e., remove the desk
         self.run_RANSAC_plane(visualize)
-
+        self.run_RANSAC_plane(visualize)
         # db scan rest of the cloud, i.e., segment the cubes
         segmented_cubes = self.do_dbscan(visualize)
 
@@ -281,10 +223,4 @@ class PCHandler():
 
 
 if __name__ == '__main__':
-    try:
-        pch = PCHandler()
-        # dm.create_voronoi()
-        rospy.spin()
-    except rospy.ROSInterruptException as exc:
-        print("Something went wront")
-        print(exc)
+    pch = PCHandler()
