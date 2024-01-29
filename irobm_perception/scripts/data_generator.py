@@ -37,7 +37,7 @@ class PCHandler():
 
         sub = rospy.Subscriber(cloudpoints_topic, PointCloud2, self.callback)
         #self.publisher_filtered = rospy.Publisher("perception/point_cloud/filtered_cloud")
-        self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(1))
+        self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         rospy.on_shutdown(self.shutdown_procedure)
         self.save_signal = False
@@ -73,8 +73,17 @@ class PCHandler():
     def save(self, pc2_msg, transform = False):
         if transform:
             transform_stamped = self.tf_buffer.lookup_transform("panda_link0", pc2_msg.header.frame_id,
-                                                                rospy.Time(), rospy.Duration(1.0))
+                                                                    rospy.Time(), rospy.Duration(1.0))
             pc2_msg = do_transform_cloud(pc2_msg, transform_stamped)
+            """try:
+                transform_stamped = self.tf_buffer.lookup_transform("panda_link0", pc2_msg.header.frame_id,
+                                                                    rospy.Time(), rospy.Duration(1.0))
+                pc2_msg = do_transform_cloud(pc2_msg, transform_stamped)
+            except Exception as exc:
+                print(exc)
+                frames_dict = yaml.safe_load(self.tf_buffer.all_frames_as_yaml())
+                print(list(frames_dict.keys()))
+                exit()"""
 
         points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True) 
 
