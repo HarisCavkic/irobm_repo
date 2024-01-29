@@ -8,6 +8,7 @@ import time
 import yaml 
 
 from sensor_msgs.msg import PointCloud2, PointField
+from tf2_sensor_msgs.tf2_sensor_msgs import do_transform_cloud
 import sensor_msgs.point_cloud2 as pc2
 import struct
 import ctypes
@@ -70,33 +71,29 @@ class PCHandler():
         return points_array
 
     def save(self, pc2_msg, transform = False):
+        if transform:
+            transform_stamped = self.tf_buffer.lookup_transform("panda_link0", pc2_msg.header.frame_id,
+                                                                rospy.Time(), rospy.Duration(1.0))
+            pc2_msg = do_transform_cloud(pc2_msg, transform_stamped)
+
         points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True) 
 
         # Convert points to a numpy array
         points_array = np.array(list(points))
-        #todo check weather this all is necessary 
-        mask = np.where(points_array[:,2 ] < 1.3, True, False)
-        mask3 = np.where(points_array[:,1 ] < 1.3, True, False)
-        mask2 = np.where(points_array[:,0 ] < 1.3, True, False)
-        mask = np.logical_and(mask, np.logical_and(mask2, mask3))
-        points_array = points_array[mask]
-
         if transform:
-            filtered_pc2_msg = pc2.create_cloud_xyz32(pc2_msg.header, points_array)
-            stamp = pc2_msg.header.stamp
-            pc2_msg = transform_to_base(filtered_pc2_msg, stamp, self.tf_buffer)
-
+            mask3 = np.where(points_array[:, 1] < .7, True, False)
+            mask4 = np.where(points_array[:, 1] > -.7, True, False)
+            mask = np.where(points_array[:, 0] > -.7, True, False)
+            mask2 = np.where(points_array[:, 0] < .7, True, False)
+            # mask5 = np.where(points_array[:, 2] > -.5, True, False)
+            # mask = np.logical_and(mask5, np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3))))
+            mask = np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3)))
+            points_array = points_array[mask]
             file_path = str(DATA_PATH / f'point_cloud_transformed_new{self.index}.npy')
             self.transform_index += 1
-
-            points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True) 
-
-            # Convert points to a numpy array
-            points_array = np.array(list(points))
         else:
             file_path = str(DATA_PATH / f'point_cloud{self.index}.npy')
             self.index += 1
-
         
         print("Its good writing")
         #write
@@ -117,7 +114,7 @@ class PCHandler():
             return
         print("saving pc")
         #self.save(pc2_msg)
-        self.save_cloud(pc2_msg)
+        self.save(pc2_msg, transform=False)
         print("saving transformed pc")
         points_array = self.save(pc2_msg, transform=True)
         
