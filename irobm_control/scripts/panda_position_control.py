@@ -15,14 +15,14 @@ from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajRespon
 class PandaMoveNode:
     def __init__(self):
         moveit_commander.roscpp_initialize(sys.argv)
-        rospy.init_node('panda_move_node', anonymous=True)
 
         # Initialize MoveIt!
         self.robot = moveit_commander.RobotCommander()
         self.group = moveit_commander.MoveGroupCommander("panda_arm")
 
         # Check if running in simulation
-        self.is_simulation = True
+        # in the simulation all z-values have to be increased by 0.787 due to the table
+        self.is_simulation = rospy.get_param('is_sim', True)
 
         if self.is_simulation:
             # Initialize Gazebo service
@@ -31,16 +31,17 @@ class PandaMoveNode:
             # Additional initialization for the real robot, if needed
             pass
 
-        self.move_to = rospy.Service('/move_to', MoveTo, self.move_to_handler)
+        self.move_to = rospy.Service('/irobm_control/move_to', MoveTo, self.move_to_handler)
+        self.basic_traj = rospy.Service('/irobm_control/basic_traj', BasicTraj, self.basic_traj_handler)
 
 
     def move_to_handler(self, req):
-        position = [req.position.y, req.position.x, req.position.z]
+        position = [req.position.x, req.position.y, req.position.z]
 
         if not req.w_orient:
             orientation = [3.1415, 0.0, 0.0]
         else:
-            orientation = [req.orientation[0], req.orientation[1], req.orientation]
+            orientation = [req.orientation[0], req.orientation[1], req.orientation[2]]
 
         self.move_panda_to_position(position, orientation)
 
@@ -59,10 +60,13 @@ class PandaMoveNode:
             if req.w_orient:
                 temp_orient = [3.1415, 0.0, 0.0]
             else:
-                temp_orient = [req.orientation[0], req.orientation[1], req.orientation]
+                temp_orient = [req.orientation[i].x, req.orientation[i].y, req.orientation[i].z]
             
             position.append(temp_pos)
             orientation.append(temp_orient)
+
+        if not(len(position) == len(orientation)):
+            print("Position and Orientation length are not the same")
 
         self.move_to_positions(position, orientation)
 
@@ -174,11 +178,10 @@ class PandaMoveNode:
         self.move_to_positions(target_pos_ls, target_orient)
 
 if __name__ == '__main__':
-    try:
-        panda_move_node = PandaMoveNode()
-        panda_move_node.run()
-    except rospy.ROSInterruptException:
-        pass
+    rospy.init_node('panda_move_node')
+    position_class = PandaMoveNode()
+    rospy.spin()
+
 
 
 

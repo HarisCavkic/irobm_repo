@@ -3,11 +3,11 @@
 import rospy
 import actionlib
 from control_msgs.msg import GripperCommandAction, GripperCommandGoal
+from irobm_control.srv import CloseGripper, CloseGripperResponse, OpenGripper, OpenGripperResponse
+from irobm_control.srv import SetGripperWidth, SetGripperWidthResponse
 
-class PandaGripperController:
+class PandaGripperNode:
     def __init__(self):
-        # Initialize the ROS node
-        rospy.init_node('panda_gripper_controller_node', anonymous=True)
 
         # Determine if the environment is Gazebo or real robot
         self.is_gazebo = rospy.get_param('/use_sim_time', False)
@@ -15,31 +15,54 @@ class PandaGripperController:
         # Connect to the gripper action server
         if self.is_gazebo:
             # Gazebo gripper action server
-            print("Gazeb")
+            print("Gazebo environment")
             gripper_action_server = '/franka_gripper/gripper_action'
         else:
             # Real robot gripper action server
-            print("Real")
+            print("Real environment")
             gripper_action_server = '/franka_gripper/gripper_action'
 
         self.gripper_client = actionlib.SimpleActionClient(gripper_action_server, GripperCommandAction)
         t_out = self.gripper_client.wait_for_server()
 
-    def open_gripper(self):
-        # Open the gripper fully
-        self.set_gripper_position(0.04)  # Adjust the value based on your gripper's open position
+        self.open_gripper_service = rospy.Service('/irobm_control/open_gripper', OpenGripper, self.open_gripper_handler)
+        self.close_gripper_service = rospy.Service('/irobm_conrol/close_gripper', CloseGripper, self.close_gripper_handler)
+        self.set_gripper_width = rospy.Service('/irobm_control/set_gripper_width', SetGripperWidth, self.set_gripper_width_handler)
 
-    def close_gripper(self):
-        # Close the gripper fully
-        print("Close Gripper")
-        self.set_gripper_position(0.0)
 
-    def set_gripper_distance(self, distance):
-        # Set the gripper to a specific distance
-        print("Set Distance")
-        self.set_gripper_position(distance)
+    def open_gripper_handler(self, req):
+        # Position for the fully opened gripper is 0.04(0.04 in both directions, so fully open it is 0.08)
+        self.set_gripper_position(0.04)
 
-    def set_gripper_position(self, position):
+        response = OpenGripperResponse()
+        response.success = True
+        return response
+
+    def close_gripper_handler(self, req):
+        effort = req.effort
+        if effort is None:
+            self.set_gripper_position(0.0)
+        else:
+            self.set_gripper_position(0.0, effort=effort)
+
+        response = CloseGripperResponse()
+        response.success = True
+        return response
+
+    def set_gripper_width_handler(self, req):
+        width = req.width
+        effort = req.effort
+
+        if effort is None:
+            self.set_gripper_position(width)
+        else:
+            self.set_gripper_position(width, effort=effort)
+
+        response = SetGripperWidthResponse()
+        response.success = True
+        return response
+
+    def set_gripper_position(self, position, effort=0):
         # Use MoveIt! action to set gripper position
         print("Set Position")
         goal = GripperCommandGoal()
@@ -53,36 +76,8 @@ class PandaGripperController:
         # Shutdown the ROS node
         rospy.signal_shutdown('Shutdown requested')
 
+
 if __name__ == '__main__':
-    try:
-        panda_gripper_controller = PandaGripperController()
-        print("Finish setup")
-
-        panda_gripper_controller.set_gripper_distance(0.01)  # Adjust the distance as needed
-        print("specific distance")
-        rospy.sleep(5)
-
-        # Open the gripper
-        panda_gripper_controller.open_gripper()
-
-        # Wait for a moment
-        print("Open")
-        rospy.sleep(5)
-
-        # Set the gripper to a specific distance
-        panda_gripper_controller.set_gripper_distance(0.01)  # Adjust the distance as needed
-        print("specific distance")
-        rospy.sleep(5)
-        
-        # Wait for a moment
-        print("Close")
-        rospy.sleep(5)
-
-        # Close the gripper
-        # panda_gripper_controller.close_gripper()
-
-    except rospy.ROSInterruptException:
-        pass
-    finally:
-        # Clean up
-        panda_gripper_controller.cleanup()
+    rospy.init_node('panda_gripper_controller_node', anonymous=True)
+    panda_gripper_controller = PandaGripperNode()
+    rospy.spin()
