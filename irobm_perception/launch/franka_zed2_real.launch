@@ -1,13 +1,28 @@
 <launch>
+    <arg name="arm_id" default="panda" doc="Name of the panda robot to spawn" />
+    <arg name="use_gripper" default="true"  doc="Should a franka hand be mounted on the flange?" />
+    <arg name="controller"  default=" "     doc="Which example controller should be started? (One of {cartesian_impedance,model,force,joint_position,joint_velocity}_example_controller)" />
+
+    <!-- Spawn required ROS controllers -->
+  <node pkg="controller_manager"
+        type="spawner"
+        name="$(arg arm_id)_gripper_spawner"
+        if="$(arg use_gripper)"
+        args="franka_gripper"
+        respawn="false"
+  />
+
+  <!-- spawns the controller after the robot was put into its initial joint pose -->
+  <node pkg="controller_manager"
+        type="spawner"
+        name="$(arg arm_id)_controller_spawner"
+        respawn="false" output="screen"
+        args="--wait-for initialized franka_state_controller $(arg controller)"
+  />
     <!-- Include Franka Control Launch File -->
-    <include file="$(find franka_control)/launch/franka_control.launch"/>
-
-    <!-- Include Camera -->
-    <include file="$(find zed_wrapper)/launch/franka_control.launch"/>
-
-    <!-- Static Transform Publisher for Camera -->
-    <node pkg="tf" type="static_transform_publisher" name="camera_link_broadcaster"
-          args="-0.097397 0 0.0274111 0 -0.824473 0 panda_hand zed2_left_camera" />
+    <include file="$(find franka_control)/launch/franka_control.launch" pass_all_args="true">
+        <arg name="robot_ip" value="192.168.1.35"/>
+    </include>
 
 
 </launch>
