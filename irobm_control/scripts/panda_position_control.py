@@ -40,7 +40,7 @@ class PandaMoveNode:
         if not req.w_orient:
             orientation = [3.1415, 0.0, 0.0]
         else:
-            orientation = [req.orientation[0], req.orientation[1], req.orientation]
+            orientation = [req.orientation[0], req.orientation[1], req.orientation[2]]
 
         self.move_panda_to_position(position, orientation)
 

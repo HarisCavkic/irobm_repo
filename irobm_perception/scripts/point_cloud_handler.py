@@ -24,9 +24,9 @@ class PCHandler():
 
     """
 
-    def __init__(self):
+    def __init__(self, pc_topic):
         rospy.init_node('decision_maker')
-        self.sub = rospy.Subscriber("/zed2/point_cloud/cloud_registered", PointCloud2, self.callback)
+        self.sub = rospy.Subscriber(pc_topic, PointCloud2, self.callback)
         self.service = rospy.ServiceProxy('/move_to', MoveTo)
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
@@ -70,7 +70,7 @@ class PCHandler():
             # rospy.sleep(2)
             self.save_signal = True
             self.process_received_cloud()
-        # exit(0)
+        #exit(0)
         self.do_cloud_preproc(visualize)
 
     def move_to_position_and_wait(self, position):
@@ -356,7 +356,9 @@ class PCHandler():
 
 if __name__ == '__main__':
     try:
-        pch = PCHandler()
+        simulation_topic = "/zed2/point_cloud/cloud_registered"
+        real_robot_topic = "/zed2/zed_node/point_cloud/cloud_registered"
+        pch = PCHandler(real_robot_topic)
         # dm.create_voronoi()
         rospy.spin()
     except rospy.ROSInterruptException as exc:

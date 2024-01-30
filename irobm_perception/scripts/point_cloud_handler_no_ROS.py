@@ -24,7 +24,7 @@ class PCHandler():
         self.combined_pcd = None
         self.transformations = None
         # initial setup
-        self.check_service_and_process_positions(visualize = False)
+        self.check_service_and_process_positions(visualize = True)
         # todo: need current positions of the robot to calculate the offset to the objects
 
     def shutdown_procedure(self):
@@ -69,7 +69,7 @@ class PCHandler():
         coord_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
         for i in range(self.transform_index):
             try:
-                pc = np.load(str(DATA_PATH / f'point_cloud_transformed{i}.npy'))
+                pc = np.load(str(DATA_PATH / f'point_cloud_transformed_raw{i}.npy'))
                 #mask = np.where(pc[:, 2] > -.7, True, False)
                 #mask = np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3)))
                 #pc = pc[mask]
@@ -118,7 +118,7 @@ class PCHandler():
             o3d.visualization.draw_geometries([self.combined_pcd])
 
     def run_RANSAC_plane(self, visualize=False):
-        pt_to_plane_dist = .003
+        pt_to_plane_dist = .01
         plane_model, inliners = self.combined_pcd.segment_plane(distance_threshold=pt_to_plane_dist, ransac_n=5,
                                                                 num_iterations=100)
         inlier_cloud = self.combined_pcd.select_by_index(inliners)
