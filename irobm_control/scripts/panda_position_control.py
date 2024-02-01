@@ -82,7 +82,7 @@ class PandaMoveNode:
     
     def quaternion_to_euler(self, q:geometry_msgs.msg.Quaternion):
         q_l = [q.x, q.y, q.z, q.w]
-        euler = tft.euler_from_quaternion(q_l)
+        euler = list(tft.euler_from_quaternion(q_l))
         return euler
 
     def set_model_state(self, pose, twist):
@@ -194,19 +194,30 @@ class PandaMoveNode:
     def set_origin_position(self):
         self.move_panda_to_joint_position(self.origin_joint_pose)
 
-    def arc_path(self, center_of_circle:Point, radius = 0.12, times=14):
+    def arc_path(self, center_of_circle:list, radius = 0.12, times=14):
+        if center_of_circle.__len__() != 3:
+            print("The input of center_of_circle is false!")
+            return
+        if times > 24:
+            print("The euler is too large!")
+            return
+        self.set_origin_position()
+        x = radius if radius < 0.6 else 0.4
         pose = self.group.get_current_pose().pose
-        pose.position.z = center_of_circle.z + radius + 0.115
-        pose.position.y = center_of_circle.y + radius
-        pose.position.x = center_of_circle.x
+        pose.position.z = center_of_circle[2] + x + 0.115
+        pose.position.y = center_of_circle[1] + radius*math.sin(math.pi/24*times)
+        pose.position.x = center_of_circle[0] + radius*math.cos(math.pi - math.pi/24*times)
+        # x = pose.position.x
+        # y = pose.position.y
         q = self.quaternion_to_euler(pose.orientation)
-        pose.orientation = self.euler_to_quaternion(q[0], q[1], q[2]-math.pi/2)
+        pose.orientation = self.euler_to_quaternion(q[0], q[1], q[2]-math.pi/12/2*times)
+        q2 = q[2]-math.pi/12/2*times
         waypoints = []
         waypoints.append(deepcopy(pose))
-        for i in range(1, 15):
-            pose.orientation = self.euler_to_quaternion(q[0], q[1], q[2]-math.pi/2+math.pi/12*i)
-            pose.position.x = center_of_circle.x + radius * math.cos(math.pi - math.pi/2 + math.pi/12*i)
-            pose.position.y = center_of_circle.y + radius * math.sin(math.pi - math.pi/2 + math.pi/12*i)
+        for i in range(1, times+1):
+            pose.orientation = self.euler_to_quaternion(q[0], q[1], q2+math.pi/12*i)
+            pose.position.x = center_of_circle[0] + radius * math.cos(math.pi - math.pi/12/2*times + math.pi/12*i)
+            pose.position.y = center_of_circle[1] + radius * math.sin(math.pi - math.pi/12/2*times + math.pi/12*i)
             waypoints.append(deepcopy(pose))
         plan, fraction = self.group.compute_cartesian_path(waypoints, 0.01, 0)
         self.group.execute(plan)
@@ -221,8 +232,13 @@ if __name__ == '__main__':
     try:
         panda_move_node = PandaMoveNode()
         # panda_move_node.run()
-        panda_move_node.arc_path()
+        p1 = [1.1, 0.0, 0.8]
+        p2 = [0.5, 0.1, 0.8]
+        # panda_move_node.set_origin_position()
+        panda_move_node.arc_path(p1, 0.9, 4)
+        # panda_move_node.arc_path(p2)
         panda_move_node.print_current_pose()
+        # panda_move_node.arc_path(p2, 0.2)
 
     except rospy.ROSInterruptException:
         pass

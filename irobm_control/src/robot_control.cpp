@@ -106,12 +106,14 @@ ROBOT_CONTROL::~ROBOT_CONTROL()
 double ROBOT_CONTROL::arc_path(geometry_msgs::Point &center_of_circle, double radius, int times)
 {
     geometry_msgs::Pose p = ROBOT_CONTROL::current_pose;
-    p.position.z = center_of_circle.z + radius + 0.115;
-    p.position.y = center_of_circle.y + radius;
-    p.position.x = center_of_circle.x;
+    double x = radius > 0.6 ? 0.4 : radius;
+    p.position.z = center_of_circle.z + x + 0.115;
+    p.position.y = center_of_circle.y + radius*sin(tau/48*times);
+    p.position.x = center_of_circle.x + radius*cos(tau/2 - tau/48*times);
     Eigen::Vector3d rpy_o = QuaternionToRPY(ROBOT_CONTROL::origin_pose.orientation);
     Eigen::Vector3d rpy(rpy_o);
-    rpy[2] -= tau/4;
+    rpy[2] -= tau/48*times;
+    double orient = rpy[2];
     p.orientation = RPYToQuaternion(rpy);
     std::vector<geometry_msgs::Pose> waypoints;
     waypoints.push_back(p);
@@ -129,13 +131,14 @@ double ROBOT_CONTROL::arc_path(geometry_msgs::Point &center_of_circle, double ra
     for(int i{0};i < times;i++)
     {
         rpy = rpy_o;
-        rpy[2] += -tau/4 + tau/24*(i+1);
+        rpy[2] = orient + tau/24*(i+1);
         p.orientation = RPYToQuaternion(rpy);
-        p.position.x = center_of_circle.x + radius * cos(tau/2 - tau/4 + tau/24*(i+1));
-        p.position.y = center_of_circle.y + radius * sin(tau/2 - tau/4 + tau/24*(i+1));
+        p.position.x = center_of_circle.x + radius * cos(tau/2 - tau/48*times + tau/24*(i+1));
+        p.position.y = center_of_circle.y + radius * sin(tau/2 - tau/48*times + tau/24*(i+1));
         waypoints.push_back(p);
     }
-    waypoints.pop_back();
+    // waypoints.pop_back();
+    this->set_origin_pose();
     double fraction = ROBOT_CONTROL::planning_certain_path(waypoints);
     return fraction;
 }
