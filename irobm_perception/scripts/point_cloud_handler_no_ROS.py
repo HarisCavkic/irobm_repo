@@ -24,7 +24,7 @@ class PCHandler():
         self.combined_pcd = None
         self.transformations = None
         # initial setup
-        self.check_service_and_process_positions(visualize = True)
+        self.check_service_and_process_positions(visualize = False)
         # todo: need current positions of the robot to calculate the offset to the objects
 
     def shutdown_procedure(self):
@@ -37,24 +37,28 @@ class PCHandler():
         self.do_cloud_preproc(visualize)
 
     def do_cloud_preproc(self, visualize=False):
+        print("Combined clouds")
         self.combined_pcd = self.combine_pointclouds(
-            visualise=True)  # visualize only for debugging otherwise its blocking
-
+            visualise=visualize)  # visualize only for debugging otherwise its blocking
+             
         self.combined_pcd.paint_uniform_color([0.6, .6, .6])
 
+        print("Removing outliers")
         # remove outliers, i.e., do filtering
         self.remove_outliers(visualize)
-
         # estimate the normals
+        print("estimate the normals")
         self.estimate_normals(visualize)
 
         # RANSAC Planar Segmentation, i.e., remove the desk
+        print("RANSAC")
         self.run_RANSAC_plane(visualize)
-        self.run_RANSAC_plane(visualize)
+
         # db scan rest of the cloud, i.e., segment the cubes
+        print("DB SCAN")
         segmented_cubes = self.do_dbscan(visualize)
 
-        self.transformations = self.get_transformations(segmented_cubes, visualize)
+        self.transformations = self.get_transformations(segmented_cubes, True)
 
     def combine_pointclouds(self,
                             voxel_size=.001,
@@ -62,11 +66,19 @@ class PCHandler():
         pcds = list()
         nr_loaded_clouds = 0  # if there is problem with loading one of the pcds we dont want index out of bounds
         # load the data
+        coord_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
         for i in range(self.transform_index):
             try:
                 pc = np.load(str(DATA_PATH / f'point_cloud_transformed{i}.npy'))
+                #mask = np.where(pc[:, 2] > -.7, True, False)
+                #mask = np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3)))
+                #pc = pc[mask]
                 pcds.append(o3d.geometry.PointCloud())
                 pcds[nr_loaded_clouds].points = o3d.utility.Vector3dVector(pc)
+                """o3d.visualization.draw_geometries([pcds[nr_loaded_clouds], coord_axes], zoom=0.3412,
+                                  front=[-1, 0, 0],
+                                  lookat=[0, 1, 0],
+                                  up=[0., 0, 1])"""
                 nr_loaded_clouds += 1
             except Exception as exc:
                 print(f"Something went wront when loading the pointcloud number {i}")
@@ -79,19 +91,19 @@ class PCHandler():
 
         pcd_combined_down = pcd_combined.voxel_down_sample(voxel_size=voxel_size)
         if visualise:
-            o3d.visualization.draw_geometries([pcd_combined_down])  # todo check weather 1.3 is good or should be lower
+            o3d.visualization.draw_geometries([pcd_combined_down, coord_axes])  # todo check weather 1.3 is good or should be lower
         return pcd_combined_down
 
     def remove_outliers(self, visualize=False):
         """
             remove outliers, i.e., do filtering
         """
-        filtered_pcd = self.combined_pcd.remove_statistical_outlier(nb_neighbors=16, std_ratio=10)
+        filtered_pcd = self.combined_pcd.remove_statistical_outlier(nb_neighbors=16, std_ratio=5)
         final_cloud = filtered_pcd[0]
         if visualize:
             outliers = self.combined_pcd.select_by_index(filtered_pcd[1], invert=True)
             outliers.paint_uniform_color([1, 0, 0])
-            o3d.visualization.draw_geometries([final_cloud])
+            o3d.visualization.draw_geometries([final_cloud, outliers])
 
         self.combined_pcd = final_cloud
 
@@ -106,9 +118,9 @@ class PCHandler():
             o3d.visualization.draw_geometries([self.combined_pcd])
 
     def run_RANSAC_plane(self, visualize=False):
-        pt_to_plane_dist = .0005
-        plane_model, inliners = self.combined_pcd.segment_plane(distance_threshold=pt_to_plane_dist, ransac_n=3,
-                                                                num_iterations=1000)
+        pt_to_plane_dist = .003
+        plane_model, inliners = self.combined_pcd.segment_plane(distance_threshold=pt_to_plane_dist, ransac_n=5,
+                                                                num_iterations=100)
         inlier_cloud = self.combined_pcd.select_by_index(inliners)
         cubes_cloud = self.combined_pcd.select_by_index(inliners, invert=True)
 
@@ -128,7 +140,9 @@ class PCHandler():
         for i in range(0, max_labels + 1):
             print("LABEL: ", i)
             indices_to_extract = np.where(labels == i)
-
+            if len(indices_to_extract[0]) < 100:
+                #cant be cube must be outliers
+                continue
             # Extract points based on indices
             segment = cubes_points_ndarray[indices_to_extract]
 
@@ -147,6 +161,7 @@ class PCHandler():
 
     def get_transformations(self, segmented_cubes, visualize=False):
         all_transformations = list()
+        coord_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
 
         for segment in segmented_cubes:
             # for safety create cube each time
@@ -167,7 +182,8 @@ class PCHandler():
                 cube_model_cloud.transform(final_transformation)
                 cube_model_cloud.paint_uniform_color([1., 0., 0.])
                 segment.paint_uniform_color([0.6, .6, .6])
-                o3d.visualization.draw_geometries([segment, cube_model_cloud])
+                coord_axes2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=final_transformation[:3,3])
+                o3d.visualization.draw_geometries([coord_axes2,segment, cube_model_cloud, coord_axes])
 
             all_transformations.append(final_transformation)
 
@@ -191,7 +207,7 @@ class PCHandler():
         # only use 3 sides of the cube (not full cube is generated)
         # this is due to fact that the cubes in the scanned
         # point cloud are not full and often are lacking sides
-        cube_mesh.remove_vertices_by_index([1])
+        #cube_mesh.remove_vertices_by_index([1])
 
         # Translate the cube to center it at the origin
         # this is important for icp, as we want to get position and orientation relative to base

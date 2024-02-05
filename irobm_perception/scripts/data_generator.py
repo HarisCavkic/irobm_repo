@@ -11,13 +11,11 @@ from sensor_msgs.msg import PointCloud2, PointField
 import sensor_msgs.point_cloud2 as pc2
 import struct
 import ctypes
-import ros_numpy
 import numpy as np
 import open3d as o3d
 from sensor_msgs import point_cloud2
 import rospy
 import tf2_ros
-import pcl
 
 from utils import visualize, transform_to_base
 
@@ -50,6 +48,7 @@ class PCHandler():
         pass
 
     def save_cloud(self, pc2_msg):
+        print("Transforming to base")
         pc2_msg = transform_to_base(pc2_msg, pc2_msg.header.stamp, self.tf_buffer)
         points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True)
 
@@ -62,7 +61,7 @@ class PCHandler():
         mask = np.logical_and(mask, np.logical_and(mask2, mask3))
         points_array = points_array[mask]
 
-        file_path = str(DATA_PATH / f'point_cloud_transformed{self.transform_index}.npy')
+        file_path = str(DATA_PATH / f'point_cloud_new{self.transform_index}.npy')
         self.transform_index += 1
 
         print("Its good writing")
@@ -87,7 +86,7 @@ class PCHandler():
             stamp = pc2_msg.header.stamp
             pc2_msg = transform_to_base(filtered_pc2_msg, stamp, self.tf_buffer)
 
-            file_path = str(DATA_PATH / f'point_cloud_transformed{self.index}.npy')
+            file_path = str(DATA_PATH / f'point_cloud_transformed_new{self.index}.npy')
             self.transform_index += 1
 
             points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True) 
@@ -140,40 +139,7 @@ class PCHandler():
         stamp = pc2_msg.header.stamp
         data = transform_to_base(pc2_msg, stamp, self.tf_buffer)
         """
-        
 
-    
-    
-    
-    def segment_pcl(self, cloud_pcl, model_type, threshold=0.006):
-        seg = cloud_pcl.make_segmenter_normals(ksearch=50)
-        print("Filtered the z axis2")
-        seg.set_optimize_coefficients(True)
-        seg.set_model_type(model_type)
-        seg.set_normal_distance_weight(0.15)
-        print("Filtered the z axis")
-        seg.set_method_type(pcl.SAC_RANSAC)
-        seg.set_max_iterations(200)
-        seg.set_distance_threshold(threshold)  # 0.006
-        indices, coefficients = seg.segment()
-        print("Filtered the z axis3")
-        # https://pointclouds.org/documentation/group__sample__consensus.html
-        # describes the coeffici
-        if len(indices) == 0:
-            print('Could not estimate a planar model for the given dataset.')
-            exit(0)
-
-        return indices, coefficients
-    
-    def pointCloud2_to_PointXYZRGB(self, point_cloud):
-        points_list = []
-        for data in pc2.read_points(point_cloud, skip_nans=False):
-            points_list.append([data[0], data[1], data[2], data[3]])
-
-        pcl_data = pcl.PointCloud_PointXYZRGB()
-        pcl_data.from_list(points_list)
-
-        return pcl_data
 
     def pointXYZRGB_to_pointCloud2(self, pcl_cloud):
         ros_msg = PointCloud2()

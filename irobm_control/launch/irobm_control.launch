@@ -1,6 +1,6 @@
 <launch>
     <arg name="pkg" default="irobm_control" />
-    <arg name="is_sim_arg" default="true" />
+    <arg name="is_sim_arg" default="false" />
 
 
     <node name="panda_move_node" pkg="$(arg pkg)" type="panda_position_control.py" respawn="true" output="screen">
