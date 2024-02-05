@@ -39,7 +39,7 @@ class PandaMoveNode:
         position = [req.position.x, req.position.y, req.position.z]
 
         if not req.w_orient:
-            orientation = [3.1415, 0.0, 0.0]
+            orientation = [math.pi, 0.0, -math.pi / 4]
         else:
             orientation = [req.orientation[0], req.orientation[1], req.orientation[2]]
 
@@ -57,8 +57,8 @@ class PandaMoveNode:
         for i in range(len(req.position_list)):
             temp_pos = [req.position[i].x, req.position[i].y, req.position[i].z]
 
-            if req.w_orient:
-                temp_orient = [3.1415, 0.0, 0.0]
+            if not req.w_orient:
+                temp_orient = [math.pi, 0.0, -math.pi / 4]
             else:
                 temp_orient = [req.orientation[i].x, req.orientation[i].y, req.orientation[i].z]
             
@@ -112,7 +112,7 @@ class PandaMoveNode:
         target_pose.position.z = position[2]
 
         if euler_angles == None:
-            euler_angles = [3.1415, 0.0, 0.0]
+            euler_angles = [math.pi, 0.0, -math.pi / 4]
         
         # Set the orientation using Euler angles if provided
         if euler_angles is not None:
@@ -178,6 +178,7 @@ class PandaMoveNode:
         self.move_to_positions(target_pos_ls, target_orient)
 
 if __name__ == '__main__':
+    # rospy.init_node('panda_move_node', log_level=rospy.DEBUG) #node with log set to debug
     rospy.init_node('panda_move_node')
     position_class = PandaMoveNode()
     rospy.spin()

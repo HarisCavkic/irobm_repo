@@ -26,7 +26,7 @@ class PandaGripperNode:
         t_out = self.gripper_client.wait_for_server()
 
         self.open_gripper_service = rospy.Service('/irobm_control/open_gripper', OpenGripper, self.open_gripper_handler)
-        self.close_gripper_service = rospy.Service('/irobm_conrol/close_gripper', CloseGripper, self.close_gripper_handler)
+        self.close_gripper_service = rospy.Service('/irobm_control/close_gripper', CloseGripper, self.close_gripper_handler)
         self.set_gripper_width = rospy.Service('/irobm_control/set_gripper_width', SetGripperWidth, self.set_gripper_width_handler)
 
 
@@ -62,15 +62,17 @@ class PandaGripperNode:
         response.success = True
         return response
 
-    def set_gripper_position(self, position, effort=0):
+    def set_gripper_position(self, position, effort=10):
         # Use MoveIt! action to set gripper position
         print("Set Position")
         goal = GripperCommandGoal()
         goal.command.position = position
-        goal.command.max_effort = 0.0  # Adjust the max effort as needed
+        goal.command.max_effort = effort  # Adjust the max effort as needed
 
         self.gripper_client.send_goal(goal)
+        # send the goal
         self.gripper_client.wait_for_result()
+        # result returned
 
     def cleanup(self):
         # Shutdown the ROS node
@@ -78,6 +80,10 @@ class PandaGripperNode:
 
 
 if __name__ == '__main__':
-    rospy.init_node('panda_gripper_controller_node', anonymous=True)
+    rospy.init_node('panda_gripper_controller_node', anonymous=True, log_level=rospy.DEBUG)
     panda_gripper_controller = PandaGripperNode()
     rospy.spin()
+
+    #Example Gripper positions:
+    # 
+    # 
