@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   geometry_msgs
+  franka_gripper
 )
 
 ## System dependencies are found with CMake's conventions
@@ -112,7 +113,7 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  CATKIN_DEPENDS std_msgs franka_zed_gazebo roscpp rospy std_msgs message_runtime
+  CATKIN_DEPENDS std_msgs franka_gripper franka_zed_gazebo roscpp rospy std_msgs message_runtime 
 #  INCLUDE_DIRS include
 #  LIBRARIES irobm_control
 #  DEPENDS system_lib

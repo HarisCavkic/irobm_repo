@@ -62,9 +62,23 @@ class ExampleControllerNode:
             return None, None
 
     def run(self):
+        pos0 = (np.array([0.5, 0.0, 0.5]) + np.array(self.desk_h)).tolist()
         pos1 = (np.array([0.5, 0.0, 0.13]) + np.array(self.desk_h)).tolist()
         pos2 = (np.array([0.5, 0.0, 0.33]) + np.array(self.desk_h)).tolist()
-
+        pos3 = (np.array([0.3, 0.3, 0.1315]) + np.array(self.desk_h)).tolist()
+        posA = (np.array([0.3, 0.3, 0.32]) + np.array(self.desk_h)).tolist()
+        pos4 = (np.array([0.5, -0.1, 0.13]) + np.array(self.desk_h)).tolist()
+        pos5 = (np.array([0.3, 0.3, 0.185]) + np.array(self.desk_h)).tolist()
+        posB = (np.array([0.3, 0.3, 0.374]) + np.array(self.desk_h)).tolist()
+        posC = (np.array([0.5, -0.1, 0.33]) + np.array(self.desk_h)).tolist()
+        
+        req = MoveToRequest()
+        req.position = Point(*pos0)
+        req.orientation = [math.pi, 0.0, -math.pi / 4]
+        req.w_orient = True
+        response = self.move_to_client(req)
+        print(f'Executed move to pos1: {pos0}')
+        
         req = OpenGripperRequest()
         response = self.open_gripper_client(req)
         print('Executed open gripper')
@@ -74,11 +88,12 @@ class ExampleControllerNode:
         req.orientation = [math.pi, 0.0, -math.pi / 4]
         req.w_orient = True
         response = self.move_to_client(req)
-        print('Executed move to pos1')
+        print(f'Executed move to pos1: {pos1}')
 
         req = SetGripperWidthRequest()
-        req.width = 0.0111
-        req.effort = 50.0
+        # req.width = 0.01125 # in sim
+        req.width = 0.01075 #0.01075 since real cube is 0.43
+        req.effort = 20.0
         response = self.set_gripper_width_client(req)
         print('Executed Gripper width')
 
@@ -87,7 +102,80 @@ class ExampleControllerNode:
         req.orientation = [math.pi, 0.0, -math.pi / 4]
         req.w_orient = True
         response = self.move_to_client(req)
-        print('Executed move to pos2')
+        print(f'Executed move to pos2: {pos2}')
+
+        req = MoveToRequest()
+        req.position = Point(*posA)
+        req.orientation = [math.pi, 0.0, -math.pi / 4]
+        req.w_orient = True
+        response = self.move_to_client(req)
+        print(f'Executed move to posA: {posA}')
+
+        req = MoveToRequest()
+        req.position = Point(*pos3)
+        req.orientation = [math.pi, 0.0, -math.pi / 4]
+        req.w_orient = True
+        response = self.move_to_client(req)
+        print(f'Executed move to pos2: {pos3}')
+
+        req = OpenGripperRequest()
+        response = self.open_gripper_client(req)
+        print('Executed open gripper')
+
+        req = MoveToRequest()
+        req.position = Point(*posA)
+        req.orientation = [math.pi, 0.0, -math.pi / 4]
+        req.w_orient = True
+        response = self.move_to_client(req)
+        print(f'Executed move to pos1: {posA}')
+
+        req = MoveToRequest()
+        req.position = Point(*posC)
+        req.orientation = [math.pi, 0.0, -math.pi / 4]
+        req.w_orient = True
+        response = self.move_to_client(req)
+        print(f'Executed move to pos1: {posC}')
+
+        req = MoveToRequest()
+        req.position = Point(*pos4)
+        req.orientation = [math.pi, 0.0, -math.pi / 4]
+        req.w_orient = True
+        response = self.move_to_client(req)
+        print(f'Executed move to pos1: {pos4}')
+
+        req = SetGripperWidthRequest()
+        # req.width = 0.01125 # in sim
+        req.width = 0.01075 #0.01075 since real cube is 0.43
+        req.effort = 20.0
+        response = self.set_gripper_width_client(req)
+        print('Executed Gripper width')
+
+        req = MoveToRequest()
+        req.position = Point(*posB)
+        req.orientation = [math.pi, 0.0, -math.pi / 4]
+        req.w_orient = True
+        response = self.move_to_client(req)
+        print(f'Executed move to pos1: {posB}')
+
+        req = MoveToRequest()
+        req.position = Point(*pos5)
+        req.orientation = [math.pi, 0.0, -math.pi / 4]
+        req.w_orient = True
+        response = self.move_to_client(req)
+        print(f'Executed move to pos1: {pos5}')
+
+        req = OpenGripperRequest()
+        response = self.open_gripper_client(req)
+        print('Executed open gripper')
+
+        req = MoveToRequest()
+        req.position = Point(*posB)
+        req.orientation = [math.pi, 0.0, -math.pi / 4]
+        req.w_orient = True
+        response = self.move_to_client(req)
+        print(f'Executed move to pos1: {posB}')
+
+
 
 
 
