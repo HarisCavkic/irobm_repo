@@ -13,7 +13,7 @@ def get_T_matrix(rotation, translation, quaternion):
     """
     if quaternion:
         # Convert quaternion to rotation matrix
-        qx, qy, qz, qw = rotation.flatten()
+        qx, qy, qz, qw = rotation.x, rotation.y, rotation.z, rotation.w
         R = np.array([[1 - 2 * qy ** 2 - 2 * qz ** 2, 2 * qx * qy - 2 * qz * qw, 2 * qx * qz + 2 * qy * qw],
                       [2 * qx * qy + 2 * qz * qw, 1 - 2 * qx ** 2 - 2 * qz ** 2, 2 * qy * qz - 2 * qx * qw],
                       [2 * qx * qz - 2 * qy * qw, 2 * qy * qz + 2 * qx * qw, 1 - 2 * qx ** 2 - 2 * qy ** 2]])
@@ -33,7 +33,7 @@ def get_T_matrix(rotation, translation, quaternion):
 
     T = np.eye(4)
     T[:3, :3] = R
-    T[:3, 3] = translation.flatten()
+    T[:3, 3] = T[:3, 3] = translation
 
     return T
 
@@ -102,7 +102,7 @@ def do():
         print(list(frames_dict.keys()))
         cloud_out = None
 
-    z2_T_map = get_T_matrix(rotation, translation, True)
+    z2_T_map = get_T_matrix(rotation, np.array([translation.x, translation.y, translation.z]), True)
 
     ph_rot_z2 = np.array([-0.097397, 0, 0.0274111, ])
     ph_t_z2 = np.array([0, -0.824473, 0])
