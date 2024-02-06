@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.8
 import tf2_ros
+import tf.transformations as tf_trans
 import rospy
 import yaml
 import numpy as np
@@ -92,19 +93,18 @@ def do():
         rotation = transform_stamped.transform.rotation
         translation = transform_stamped.transform.translation
 
-        # Print the transformation matrix
-        print("Transform matrix:\n", transform_stamped.transform)
-        print("Rotation:\n", rotation)
-        print("Translation:\n", translation)
     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
         rospy.logwarn("Transform exception: %s", str(e))
         frames_dict = yaml.safe_load(tf_buffer.all_frames_as_yaml())
         print(list(frames_dict.keys()))
         cloud_out = None
 
-    z2_T_map = get_T_matrix(rotation, np.array([translation.x, translation.y, translation.z]), True)
+    z2_T_map = tf_trans.quaternion_matrix(np.array([rotation.x, rotation.y, rotation.z, rotation.w]))
+    z2_T_map[:3, 3] = np.array([translation.x, translation.y, translation.z])
 
-    ph_rot_z2 = np.array([-0.097397, 0, 0.0274111, ])
+
+
+    ph_rot_z2 = np.array([-0.097397, 0, 0.0274111])
     ph_t_z2 = np.array([0, -0.824473, 0])
 
     ph_T_z2 = get_T_matrix(ph_rot_z2, ph_t_z2, False)
@@ -138,6 +138,9 @@ def do():
     print("T: ", ph_T_map)
 
     quatern, trans = get_rot_and_translation(ph_T_map)
+    print("COMPAREE")
+    print(quatern)
+    print(tf_trans.quaternion_from_matrix(ph_T_map))
     print("Rot: ", quatern)
     print("Transl: ", trans)
 

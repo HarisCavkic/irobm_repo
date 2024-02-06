@@ -48,28 +48,6 @@ class PCHandler():
     def shutdown_procedure(self):
         pass
 
-    def save_cloud(self, pc2_msg):
-        print("Transforming to base")
-        pc2_msg = transform_to_base(pc2_msg, pc2_msg.header.stamp, self.tf_buffer)
-        points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True)
-
-        # Convert points to a numpy array
-        points_array = np.array(list(points))
-        # todo check weather this all is necessary
-        mask = np.where(points_array[:, 2] < 1.3, True, False)
-        mask3 = np.where(points_array[:, 1] < 1.3, True, False)
-        mask2 = np.where(points_array[:, 0] < 1.3, True, False)
-        mask4 = np.where(points_array[:, 0] > 1.3, True, False)
-        mask = np.logical_and(mask, np.logical_and(mask2, mask3))
-        points_array = points_array[mask]
-
-        file_path = str(DATA_PATH / f'point_cloud_new{self.transform_index}.npy')
-        self.transform_index += 1
-
-        print("Its good writing")
-        # write
-        np.save(file_path, points_array.astype(np.float16))  # save float16 => smaller memory footprint
-        return points_array
 
     def save(self, pc2_msg, transform = False):
         if transform:
@@ -91,12 +69,16 @@ class PCHandler():
         # Convert points to a numpy array
         points_array = np.array(list(points))
         if transform:
+            mask = np.where(points_array[:, 0] > 0, True, False)
+            mask2 = np.where(points_array[:, 0] < 1., True, False)
             mask3 = np.where(points_array[:, 1] < .85, True, False)
-            mask4 = np.where(points_array[:, 1] > 0, True, False)
-            mask = np.where(points_array[:, 0] > -8, True, False)
-            mask2 = np.where(points_array[:, 0] < 8, True, False)
+            mask4 = np.where(points_array[:, 1] > -0.85, True, False)
             mask5 = np.where(points_array[:, 2] > -.01, True, False)
-            mask = np.logical_and(mask5, np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3))))
+            mask6 = np.where(points_array[:, 2] < 0.15, True, False)
+            mask = np.logical_and(mask6, 
+                                  np.logical_and(mask5, 
+                                                 np.logical_and(mask4, 
+                                                                np.logical_and(mask, np.logical_and(mask2, mask3)))))
             #mask = np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3)))
             points_array_filtered = points_array[mask]
             file_path = str(DATA_PATH / f'point_cloud_transformed_raw{self.transform_index}.npy')
@@ -133,12 +115,12 @@ class PCHandler():
         # Visualize the point cloud
         point_cloud = o3d.geometry.PointCloud()
         point_cloud.points = o3d.utility.Vector3dVector(points_array)
-        point_cloud.paint_uniform_color([0, 1, 0])
+        point_cloud.paint_uniform_color([1, 0, 0])
         point_cloud_filtered = o3d.geometry.PointCloud()
         point_cloud_filtered.points = o3d.utility.Vector3dVector(points_array_filtered)
-        point_cloud_filtered.paint_uniform_color([1, 0 ,0])
+        point_cloud_filtered.paint_uniform_color([0.6, .6 ,0.6])
         coord_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
-        o3d.visualization.draw_geometries([point_cloud, point_cloud_filtered, coord_axes], zoom=0.3,
+        o3d.visualization.draw_geometries([point_cloud_filtered, coord_axes], zoom=0.3,
                                               front=[-1, 0, 0],
                                               lookat=[0, 1, 0],
                                               up=[0., 0, 1])
@@ -157,61 +139,6 @@ class PCHandler():
         stamp = pc2_msg.header.stamp
         data = transform_to_base(pc2_msg, stamp, self.tf_buffer)
         """
-
-
-    def pointXYZRGB_to_pointCloud2(self, pcl_cloud):
-        ros_msg = PointCloud2()
-
-        ros_msg.header.stamp = rospy.Time.now()
-        ros_msg.header.frame_id = "base_footprint"
-
-        ros_msg.height = 1
-        ros_msg.width = pcl_cloud.size
-
-        ros_msg.fields.append(
-            PointField(name="x",
-                       offset=0,
-                       datatype=PointField.FLOAT32,
-                       count=1))
-        ros_msg.fields.append(
-            PointField(name="y",
-                       offset=4,
-                       datatype=PointField.FLOAT32,
-                       count=1))
-        ros_msg.fields.append(
-            PointField(name="z",
-                       offset=8,
-                       datatype=PointField.FLOAT32,
-                       count=1))
-        ros_msg.fields.append(
-            PointField(name="rgb",
-                       offset=16,
-                       datatype=PointField.FLOAT32,
-                       count=1))
-
-        ros_msg.is_bigendian = False
-        ros_msg.point_step = 32
-        ros_msg.row_step = ros_msg.point_step * ros_msg.width * ros_msg.height
-        ros_msg.is_dense = False
-        buffer = []
-
-        for data in pcl_cloud:
-            s = struct.pack('>f', data[3])
-            i = struct.unpack('>l', s)[0]
-            pack = ctypes.c_uint32(i).value
-
-            r = (pack & 0x00FF0000) >> 16
-            g = (pack & 0x0000FF00) >> 8
-            b = (pack & 0x000000FF)
-
-            buffer.append(
-                struct.pack('ffffBBBBIII', data[0], data[1], data[2], 1.0, b,
-                            g, r, 0, 0, 0, 0))
-
-        ros_msg.data = b"".join(buffer)
-
-        return ros_msg
-
 
 if __name__ == '__main__':
     try:

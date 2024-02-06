@@ -75,10 +75,10 @@ class PCHandler():
                 #pc = pc[mask]
                 pcds.append(o3d.geometry.PointCloud())
                 pcds[nr_loaded_clouds].points = o3d.utility.Vector3dVector(pc)
-                """o3d.visualization.draw_geometries([pcds[nr_loaded_clouds], coord_axes], zoom=0.3412,
+                o3d.visualization.draw_geometries([pcds[nr_loaded_clouds], coord_axes], zoom=0.3412,
                                   front=[-1, 0, 0],
                                   lookat=[0, 1, 0],
-                                  up=[0., 0, 1])"""
+                                  up=[0., 0, 1])
                 nr_loaded_clouds += 1
             except Exception as exc:
                 print(f"Something went wront when loading the pointcloud number {i}")
