@@ -36,7 +36,7 @@ class PandaMoveNode:
 
         self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
         self.move_to = rospy.Service('/move_to', MoveTo, self.move_to_handler)
-        self.BasicTraj = rospy.Service('/BasicTraj', BasicTraj, self.basic_traj_handler)
+        self.BasicTraj_srv = rospy.Service('/BasicTraj', BasicTraj, self.basic_traj_handler)
         self.arc_path_srv = rospy.Service('/arc_path', arc_path, self.arc_path_handler)
 
 
