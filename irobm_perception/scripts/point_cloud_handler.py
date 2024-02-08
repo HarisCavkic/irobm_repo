@@ -32,9 +32,9 @@ class PCHandler():
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         rospy.on_shutdown(self.shutdown_procedure)
 
-        self.positions = [[0, .3, 1.3, [3, 0., -0.8], True],
-                          [-.5, .5, 1.3, [3.1415, 0.0, 0.0], True],
-                          [.5, .4, 1.2, [3.1415, -0.3, -1.3], True]]
+        self.positions = [[0, .3, 0.5, [3.1415, 0., -0.8], True],
+                          [-.35, .35, 0.5, [3.1415, 0.2, 0], True],
+                          [.35, .35, 0.5, [3.1415, 0.2, -math.pi/2], True]]
 
         self.current_cloud = None
         self.transform_index = 0
@@ -68,9 +68,9 @@ class PCHandler():
             self.move_to_position_and_wait(position)
             # print("Should be there")
             # rospy.sleep(2)
-            self.save_signal = True
-            self.process_received_cloud()
-        #exit(0)
+            #self.save_signal = True
+            #self.process_received_cloud()
+        exit(0)
         self.do_cloud_preproc(visualize)
 
     def move_to_position_and_wait(self, position):
@@ -173,7 +173,7 @@ class PCHandler():
 
         for transformation in self.transformations:
             position = list(transformation[:3, 3])
-            position[2] += 1.1  # todo z offset, do we need it for real robot!!!
+            #position[2] += 1.1  # todo z offset, do we need it for real robot!!!
             param_list = [position[1], position[0], position[2]]
             orientation = [math.pi, 0., 0]
             param_list.append(orientation)
