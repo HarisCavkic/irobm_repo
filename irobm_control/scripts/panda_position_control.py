@@ -12,13 +12,12 @@ import math
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Point
-from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse
+from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse, arc_path, arc_pathResponse
 from copy import deepcopy
 
 class PandaMoveNode:
     def __init__(self):
         moveit_commander.roscpp_initialize(sys.argv)
-        rospy.init_node('panda_move_node', anonymous=True)
 
         # Initialize MoveIt!
         self.robot = mr.RobotCommander()
@@ -37,6 +36,8 @@ class PandaMoveNode:
 
         self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
         self.move_to = rospy.Service('/move_to', MoveTo, self.move_to_handler)
+        self.BasicTraj = rospy.Service('/BasicTraj', BasicTraj, self.basic_traj_handler)
+        self.arc_path_srv = rospy.Service('/arc_path', arc_path, self.arc_path_handler)
 
 
     def move_to_handler(self, req:MoveTo._request_class):
@@ -75,6 +76,16 @@ class PandaMoveNode:
         response.success = True
 
         return response
+    
+    def arc_path_handler(self, req:arc_path._request_class):
+        if req.radius == 0 and req.times == 0:
+            self.arc_path(req.center_of_circle)
+        else:
+            self.arc_path(req.center_of_circle, req.radius, req.times)
+        response = arc_pathResponse()
+        response.success = True
+        return response
+        pass
 
     def euler_to_quaternion(self, roll, pitch, yaw):
         quaternion = tft.quaternion_from_euler(roll, pitch, yaw)
@@ -230,15 +241,17 @@ class PandaMoveNode:
 
 if __name__ == '__main__':
     try:
+        rospy.init_node('panda_move_node')
         panda_move_node = PandaMoveNode()
+        rospy.spin()
         # panda_move_node.run()
-        p1 = [1.1, 0.0, 0.8]
-        p2 = [0.5, 0.1, 0.8]
-        # panda_move_node.set_origin_position()
-        panda_move_node.arc_path(p1, 0.9, 4)
-        # panda_move_node.arc_path(p2)
-        panda_move_node.print_current_pose()
-        # panda_move_node.arc_path(p2, 0.2)
+        # p1 = [1.1, 0.0, 0.8]
+        # p2 = [0.5, 0.1, 0.8]
+        # # panda_move_node.set_origin_position()
+        # panda_move_node.arc_path(p1, 0.9, 4)
+        # # panda_move_node.arc_path(p2)
+        # panda_move_node.print_current_pose()
+        # # panda_move_node.arc_path(p2, 0.2)
 
     except rospy.ROSInterruptException:
         pass
