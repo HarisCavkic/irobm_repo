@@ -129,7 +129,7 @@ class PandaMoveNode:
         target_pose.position.z = position[2]
 
         if euler_angles == None:
-            euler_angles = [3.1415, 0.0, 0.0]
+            euler_angles = [math.pi, 0.0, -math.pi/4]
         
         # Set the orientation using Euler angles if provided
         if euler_angles is not None:
@@ -234,6 +234,12 @@ class PandaMoveNode:
         self.group.execute(plan)
         pass
 
+    # def grasp_position_generation(self, position:geometry_msgs.msg.Point, orientation:geometry_msgs.msg.Quaternion):
+    #     euler_angle = self.quaternion_to_euler(orientation)
+    #     grasp_positions_dict = dict()
+        
+    #     pass
+
     def print_current_pose(self):
         pose = self.group.get_current_pose().pose
         euler_angles = [angle*180/math.pi for angle in self.quaternion_to_euler(pose.orientation)]
@@ -243,7 +249,8 @@ if __name__ == '__main__':
     try:
         rospy.init_node('panda_move_node')
         panda_move_node = PandaMoveNode()
-        rospy.spin()
+        panda_move_node.print_current_pose()
+        # rospy.spin()
         # panda_move_node.run()
         # p1 = [1.1, 0.0, 0.8]
         # p2 = [0.5, 0.1, 0.8]
