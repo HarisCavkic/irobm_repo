@@ -1,7 +1,7 @@
 <launch>
     <!-- Include Franka Control Launch File -->
     <include file="$(find panda_moveit_config)/launch/franka_control.launch" pass_all_args="true">
-        <arg name="robot_ip" value="192.168.1.35"/>
+        <arg name="robot_ip" value="192.168.1.55"/>
     </include>
 
 
