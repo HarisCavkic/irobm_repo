@@ -1,0 +1,7 @@
+#Request
+float64[3] center_of_circle
+float64 radius
+int64 times
+---
+#Response
+bool success
