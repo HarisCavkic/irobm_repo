@@ -62,15 +62,15 @@ class ExampleControllerNode:
             return None, None
 
     def run(self):
-        pos0 = (np.array([0.5, 0.0, 0.5]) + np.array(self.desk_h)).tolist()
-        pos1 = (np.array([0.5, 0.0, 0.13]) + np.array(self.desk_h)).tolist()
-        pos2 = (np.array([0.5, 0.0, 0.33]) + np.array(self.desk_h)).tolist()
-        pos3 = (np.array([0.3, 0.3, 0.1315]) + np.array(self.desk_h)).tolist()
-        posA = (np.array([0.3, 0.3, 0.32]) + np.array(self.desk_h)).tolist()
-        pos4 = (np.array([0.5, -0.1, 0.13]) + np.array(self.desk_h)).tolist()
-        pos5 = (np.array([0.3, 0.3, 0.185]) + np.array(self.desk_h)).tolist()
-        posB = (np.array([0.3, 0.3, 0.374]) + np.array(self.desk_h)).tolist()
-        posC = (np.array([0.5, -0.1, 0.33]) + np.array(self.desk_h)).tolist()
+        pos0 = [0.5, 0.0, 0.5]
+        pos1 = [0.5, 0.0, 0.13]
+        pos2 = [0.5, 0.0, 0.33]
+        pos3 = [0.3, 0.3, 0.1315]
+        posA = [0.3, 0.3, 0.32]
+        pos4 = [0.5, -0.1, 0.13]
+        pos5 = [0.3, 0.3, 0.185]
+        posB = [0.3, 0.3, 0.374]
+        posC = [0.5, -0.1, 0.33]
         
         req = MoveToRequest()
         req.position = Point(*pos0)
@@ -186,7 +186,7 @@ class ExampleControllerNode:
 if __name__ == '__main__':
     ex_controller = ExampleControllerNode()
     print("Initialized")
-    ex_controller.run1()
+    ex_controller.run()
     # pos, orient = ex_controller.extract_model_state('cube_0')
     # print(pos, orient)
 

@@ -2,6 +2,7 @@
 
 import rospy
 import sys
+import numpy as np
 import tf
 import tf.transformations as tft
 import moveit_commander
@@ -31,9 +32,10 @@ class PandaMoveNode:
         if self.is_simulation:
             # Initialize Gazebo service
             self.set_model_state_service = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
+            self.desk_h = np.array([0.0, 0.0, 0.787])
         else:
-            # Additional initialization for the real robot, if needed
-            pass
+            self.desk_h = np.array([0.0, 0.0, 0.0])
+       
 
         self.move_to = rospy.Service('/irobm_control/move_to', MoveTo, self.move_to_handler)
         self.basic_traj = rospy.Service('/irobm_control/basic_traj', BasicTraj, self.basic_traj_handler)
@@ -42,7 +44,8 @@ class PandaMoveNode:
 
 
     def move_to_handler(self, req):
-        position = [req.position.x, req.position.y, req.position.z]
+        pos_np = np.array([req.position.x, req.position.y, req.position.z])
+        position = (pos_np + self.desk_h).tolist()
 
         if not req.w_orient:
             orientation = [math.pi, 0.0, -math.pi / 4]
@@ -61,7 +64,8 @@ class PandaMoveNode:
         orientation = []
 
         for i in range(len(req.position_list)):
-            temp_pos = [req.position_list[i].x, req.position_list[i].y, req.position_list[i].z]
+            temp_pos_np = np.array([req.position_list[i].x, req.position_list[i].y, req.position_list[i].z])
+            temp_pos = (temp_pos_np + self.desk_h).tolist()
 
             if not req.w_orient:
                 temp_orient = [math.pi, 0.0, -math.pi / 4]
