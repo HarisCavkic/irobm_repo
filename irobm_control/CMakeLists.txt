@@ -21,13 +21,9 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_ros
   tf2_eigen
   tf2_geometry_msgs
-  moveit_visual_tools
   geometry_msgs
-<<<<<<< HEAD
   message_generation
-=======
   franka_gripper
->>>>>>> 31a01c8386cb49441f17106e6c31323a250b1db8
 )
 
 ## System dependencies are found with CMake's conventions
@@ -72,6 +68,8 @@ find_package(catkin REQUIRED COMPONENTS
 
 ## Generate services in the 'srv' folder
 add_service_files(
+  DIRECTORY
+  srv
   FILES
   BasicTraj.srv
   CloseGripper.srv
@@ -125,27 +123,18 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-<<<<<<< HEAD
- INCLUDE_DIRS include
- LIBRARIES irobm_control
+ # INCLUDE_DIRS include
+ # LIBRARIES irobm_control
  CATKIN_DEPENDS 
   franka_zed_gazebo 
   roscpp rospy 
   std_msgs 
+  franka_gripper
   moveit_core
-  moveit_visual_tools
   moveit_ros_planning_interface
   interactive_markers
   tf2_geometry_msgs
   message_runtime
- DEPENDS 
-  EIGEN3
-=======
-  CATKIN_DEPENDS std_msgs franka_gripper franka_zed_gazebo roscpp rospy std_msgs message_runtime 
-#  INCLUDE_DIRS include
-#  LIBRARIES irobm_control
-#  DEPENDS system_lib
->>>>>>> 31a01c8386cb49441f17106e6c31323a250b1db8
 )
 
 ###########
@@ -155,11 +144,8 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-include
+# include
   ${catkin_INCLUDE_DIRS}
-  irobm_control
-  /usr/include/eigen3
-  /opt/ros/noetic
 )
 include_directories(${THIS_PACKAGE_INCLUDE_DIRS})
 include_directories(SYSTEM ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIRS})
@@ -168,11 +154,6 @@ include_directories(SYSTEM ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${EIGEN3_
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/irobm_control.cpp
 # )
-add_library(RPYQuaternionConvert src/RPYQuaternionConvert.cpp)
-target_link_libraries(RPYQuaternionConvert ${catkin_LIBRARIES})
-
-add_library(robot_control src/robot_control.cpp)
-target_link_libraries(robot_control ${catkin_LIBRARIES})
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -183,7 +164,6 @@ target_link_libraries(robot_control ${catkin_LIBRARIES})
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/irobm_control_node.cpp)
-add_executable(move_robot src/move_robot.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -199,12 +179,6 @@ add_executable(move_robot src/move_robot.cpp)
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
-target_link_libraries(move_robot
-  ${catkin_LIBRARIES}
-  robot_control
-  /opt/ros/noetic/lib
-  RPYQuaternionConvert
-)
 
 #############
 ## Install ##
