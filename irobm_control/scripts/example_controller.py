@@ -7,7 +7,7 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 import math
 import numpy as np
-from gazebo_msgs.srv import GetModelState
+from gazebo_msgs.srv import GetModelState, GetModelStateRequest
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Point
@@ -36,11 +36,11 @@ class ExampleControllerNode:
 
         self.open_gripper_client = rospy.ServiceProxy('/irobm_control/open_gripper', OpenGripper)
         self.close_gripper_client = rospy.ServiceProxy('/irobm_control/close_gripper', CloseGripper)
-        self.set_gripper_width_client = rospy.ServiceProxy('/irobm_control/grasp_obj', Grasp)
+        self.grasp_client = rospy.ServiceProxy('/irobm_control/grasp_obj', Grasp)
 
     def extract_model_state(self, model_name):
         # Create a request object
-        request = GetModelState()
+        request = GetModelStateRequest()
         request.model_name = model_name
 
         try:
@@ -94,7 +94,7 @@ class ExampleControllerNode:
         # req.width = 0.01125 # in sim
         req.width = 0.01075 #0.01075 since real cube is 0.43
         req.force = 20.0
-        response = self.set_gripper_width_client(req)
+        response = self.grasp_client(req)
         print('Executed Gripper width')
 
         req = MoveToRequest()
@@ -147,7 +147,7 @@ class ExampleControllerNode:
         # req.width = 0.01125 # in sim
         req.width = 0.01075 #0.01075 since real cube is 0.43
         req.force = 20.0
-        response = self.set_gripper_width_client(req)
+        response = self.grasp_client(req)
         print('Executed Gripper width')
 
         req = MoveToRequest()
@@ -175,6 +175,9 @@ class ExampleControllerNode:
         response = self.move_to_client(req)
         print(f'Executed move to pos1: {posB}')
 
+    def run1(self):
+        x = self.extract_model_state('cube_0')
+        print(f'This is the position of x: {x}')
 
 
 
@@ -183,7 +186,7 @@ class ExampleControllerNode:
 if __name__ == '__main__':
     ex_controller = ExampleControllerNode()
     print("Initialized")
-    ex_controller.run()
+    ex_controller.run1()
     # pos, orient = ex_controller.extract_model_state('cube_0')
     # print(pos, orient)
 

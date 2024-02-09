@@ -1,0 +1,7 @@
+#Request
+geometry_msgs/Point cube_centroid
+geometry_msgs/Point orientation
+string task
+---
+#Response
+bool success
