@@ -51,8 +51,7 @@ class PCHandler():
 
     def save(self, pc2_msg, transform = False):
         if transform:
-            transform_stamped = self.tf_buffer.lookup_transform("panda_link0", pc2_msg.header.frame_id,
-                                                                    rospy.Time(), rospy.Duration(1.0))
+            transform_stamped = self.tf_buffer.lookup_transform("panda_link0", pc2_msg.header.frame_id, rospy.Time())
             pc2_msg = do_transform_cloud(pc2_msg, transform_stamped)
             """try:
                 transform_stamped = self.tf_buffer.lookup_transform("panda_link0", pc2_msg.header.frame_id,
@@ -71,8 +70,8 @@ class PCHandler():
         if transform:
             mask = np.where(points_array[:, 0] > 0, True, False)
             mask2 = np.where(points_array[:, 0] < 1., True, False)
-            mask3 = np.where(points_array[:, 1] < .85, True, False)
-            mask4 = np.where(points_array[:, 1] > -0.85, True, False)
+            mask3 = np.where(points_array[:, 1] < .75, True, False)
+            mask4 = np.where(points_array[:, 1] > -0.75, True, False)
             mask5 = np.where(points_array[:, 2] > -.01, True, False)
             mask6 = np.where(points_array[:, 2] < 0.15, True, False)
             mask = np.logical_and(mask6, 

@@ -31,10 +31,11 @@ class PCHandler():
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         rospy.on_shutdown(self.shutdown_procedure)
-
-        self.positions = [[0, .3, 0.5, [3.1415, 0., -0.8], True],
-                          [-.35, .35, 0.5, [3.1415, 0.2, 0], True],
-                          [.35, .35, 0.5, [3.1415, 0.2, -math.pi/2], True]]
+        self.home_position = [0, .5, 0.5, [3.1415, 0, -0.8], True]
+        self.positions = [[0, .5, 0.5, [3.1415, 0, -0.8], True],
+                          [-.25, .4, 0.45, [3.1415, -0.2, 0.8], True],
+                          [.25, .4, 0.45, [3.1415, -0.2, -math.pi/2], True]
+                          ]
 
         self.current_cloud = None
         self.transform_index = 0
@@ -53,8 +54,7 @@ class PCHandler():
         if self.save_signal:
             try:
                 # print("Frame id: ", pc2_msg.header.frame_id)
-                transform_stamped = self.tf_buffer.lookup_transform("panda_link0", pc2_msg.header.frame_id,
-                                                                    rospy.Time(), rospy.Duration(1.0))
+                transform_stamped = self.tf_buffer.lookup_transform("panda_link0", pc2_msg.header.frame_id, rospy.Time())
                 self.current_cloud = do_transform_cloud(pc2_msg, transform_stamped)
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
                 rospy.logwarn("Transform exception: %s", str(e))
@@ -67,10 +67,9 @@ class PCHandler():
             # todo undo
             self.move_to_position_and_wait(position)
             # print("Should be there")
-            # rospy.sleep(2)
-            #self.save_signal = True
-            #self.process_received_cloud()
-        exit(0)
+            rospy.sleep(1)
+            self.save_signal = True
+            self.process_received_cloud()
         self.do_cloud_preproc(visualize)
 
     def move_to_position_and_wait(self, position):
@@ -116,13 +115,17 @@ class PCHandler():
                                               lookat=[0, 1, 0],
                                               up=[0., 0, 1])
         # todo check weather this all is necessary
-        mask3 = np.where(points_array[:, 1] < .7, True, False)
-        mask4 = np.where(points_array[:, 1] > -.7, True, False)
-        mask = np.where(points_array[:, 0] > -.7, True, False)
-        mask2 = np.where(points_array[:, 0] < .7, True, False)
-        # mask5 = np.where(points_array[:, 2] > -.5, True, False)
-        # mask = np.logical_and(mask5, np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3))))
-        mask = np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3)))
+        mask1 = np.where(points_array[:, 0] > 0.1, True, False)
+        mask2 = np.where(points_array[:, 0] < 65., True, False)
+        mask3 = np.where(points_array[:, 1] < .75, True, False)
+        mask4 = np.where(points_array[:, 1] > -0.75, True, False)
+        mask5 = np.where(points_array[:, 2] > -.01, True, False)
+        mask6 = np.where(points_array[:, 2] < 0.15, True, False)
+        mask = np.logical_and(mask6, 
+                                np.logical_and(mask5, 
+                                                np.logical_and(mask4, 
+                                                np.logical_and(mask3, 
+                                                np.logical_and(mask1, mask2)))))
         points_array = points_array[mask]
 
         ###TEST
@@ -163,24 +166,30 @@ class PCHandler():
         print("RANSAC")
         self.run_RANSAC_plane(visualize)
 
+        print("Removing outliers")
+        # remove outliers, i.e., do filtering
+        self.remove_outliers(visualize, nb_neighbors=50, std_ratio=3)
+
         # db scan rest of the cloud, i.e., segment the cubes
         print("DB SCAN")
         segmented_cubes = self.do_dbscan(True)
-
+        print(f"Found {len(segmented_cubes)} cubes")
         self.transformations = self.get_transformations(segmented_cubes, visualize)
 
         print("Trying to go to approximated positions")
 
         for transformation in self.transformations:
             position = list(transformation[:3, 3])
-            #position[2] += 1.1  # todo z offset, do we need it for real robot!!!
+            position[2] += 0.08  # todo z offset, do we need it for real robot!!!
             param_list = [position[1], position[0], position[2]]
-            orientation = [math.pi, 0., 0]
+            orientation = [math.pi, 0., -0.8]
             param_list.append(orientation)
             param_list.append(True)
+            input(f"Pres enter to move to {param_list}")
             response = self.move_to_position_and_wait(param_list)
             print("Response: ", response)
             rospy.sleep(2)
+            self.move_to_position_and_wait(self.home_position)
 
     def combine_pointclouds(self,
                             voxel_size=.001,
@@ -188,11 +197,16 @@ class PCHandler():
         pcds = list()
         nr_loaded_clouds = 0  # if there is problem with loading one of the pcds we dont want index out of bounds
         # load the data
+        coord_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
         for i in range(self.transform_index):
             try:
                 pc = np.load(str(DATA_PATH / f'point_cloud_transformed{i}.npy'))
                 pcds.append(o3d.geometry.PointCloud())
                 pcds[nr_loaded_clouds].points = o3d.utility.Vector3dVector(pc)
+                """o3d.visualization.draw_geometries([pcds[nr_loaded_clouds], coord_axes], zoom=0.3412,
+                                  front=[-1, 0, 0],
+                                  lookat=[0, 1, 0],
+                                  up=[0., 0, 1])"""
                 nr_loaded_clouds += 1
             except Exception as exc:
                 print(f"Something went wront when loading the pointcloud number {i}")
@@ -208,11 +222,11 @@ class PCHandler():
             o3d.visualization.draw_geometries([pcd_combined_down])  # todo check weather 1.3 is good or should be lower
         return pcd_combined_down
 
-    def remove_outliers(self, visualize=False):
+    def remove_outliers(self, visualize=False, nb_neighbors=16, std_ratio=2):
         """
             remove outliers, i.e., do filtering
         """
-        filtered_pcd = self.combined_pcd.remove_statistical_outlier(nb_neighbors=16, std_ratio=5)
+        filtered_pcd = self.combined_pcd.remove_statistical_outlier(nb_neighbors=nb_neighbors, std_ratio=std_ratio)
         final_cloud = filtered_pcd[0]
         if visualize:
             outliers = self.combined_pcd.select_by_index(filtered_pcd[1], invert=True)
@@ -232,7 +246,7 @@ class PCHandler():
             o3d.visualization.draw_geometries([self.combined_pcd])
 
     def run_RANSAC_plane(self, visualize=False):
-        pt_to_plane_dist = .003
+        pt_to_plane_dist = .01
         plane_model, inliners = self.combined_pcd.segment_plane(distance_threshold=pt_to_plane_dist, ransac_n=5,
                                                                 num_iterations=100)
         inlier_cloud = self.combined_pcd.select_by_index(inliners)
@@ -253,9 +267,9 @@ class PCHandler():
         segmented_cubes = list()
         cubes_points_ndarray = np.asarray(self.combined_pcd.points)
         for i in range(0, max_labels + 1):
-            print("LABEL: ", i)
             indices_to_extract = np.where(labels == i)
-            if len(indices_to_extract[0]) < 100:
+            print("LABEL: ", i, "NR points: ", len(indices_to_extract[0]))
+            if len(indices_to_extract[0]) < 500:
                 # cant be cube must be outliers
                 continue
             # Extract points based on indices
@@ -266,6 +280,10 @@ class PCHandler():
             selected_cloud.points = o3d.utility.Vector3dVector(segment)
             segmented_cubes.append(selected_cloud)
 
+        max_labels = len(segmented_cubes)
+        if max_labels >6:
+            print("TOO MUCH")
+            exit()
         if visualize:
             colors = plt.get_cmap("tab10")(labels / max_labels if max_labels > 0 else 1)
             colors[labels < 0] = 0

@@ -3,7 +3,7 @@
 ---
 
 # Dynamic parameters cannot have a namespace
-brightness:                     4                               # Dynamic
+brightness:                     10                               # Dynamic
 contrast:                       4                               # Dynamic
 hue:                            0                               # Dynamic
 saturation:                     4                               # Dynamic

@@ -54,11 +54,13 @@ class PCHandler():
         print("RANSAC")
         self.run_RANSAC_plane(visualize)
 
+        #another remove outliers
         # db scan rest of the cloud, i.e., segment the cubes
         print("DB SCAN")
         segmented_cubes = self.do_dbscan(visualize)
 
         self.transformations = self.get_transformations(segmented_cubes, True)
+        print(self.transformations)
 
     def combine_pointclouds(self,
                             voxel_size=.001,
