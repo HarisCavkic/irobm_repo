@@ -5,7 +5,7 @@ import actionlib
 from control_msgs.msg import GripperCommandAction, GripperCommandGoal
 from franka_gripper.msg import GraspAction, GraspGoal
 from irobm_control.srv import CloseGripper, CloseGripperResponse, OpenGripper, OpenGripperResponse
-from irobm_control.srv import SetGripperWidth, SetGripperWidthResponse
+from irobm_control.srv import SetGripperWidth, SetGripperWidthResponse, Grasp, GraspResponse
 
 class PandaGripperNode:
     def __init__(self):
@@ -33,6 +33,7 @@ class PandaGripperNode:
         self.open_gripper_service = rospy.Service('/irobm_control/open_gripper', OpenGripper, self.open_gripper_handler)
         self.close_gripper_service = rospy.Service('/irobm_control/close_gripper', CloseGripper, self.close_gripper_handler)
         self.set_gripper_width = rospy.Service('/irobm_control/set_gripper_width', SetGripperWidth, self.set_gripper_width_handler)
+        self.grasp_handler = rospy.Service('irobm_control/grasp_obj', Grasp, self.grasp_handler)
 
 
     def open_gripper_handler(self, req):
@@ -53,25 +54,29 @@ class PandaGripperNode:
         response = CloseGripperResponse()
         response.success = True
         return response
+    
+    def grasp_handler(self, req):
+        width = req.width
+        force = req.force
+
+        if force is None:
+            self.grasp(width)
+        else:
+            self.grasp(width, force=force)
+
+        response = GraspResponse()
+        response.success = True
+        return response
         
 
-    # def set_gripper_width_handler(self, req):
-    #     width = req.width
-    #     effort = req.effort
-
-    #     if effort is None:
-    #         self.set_gripper_position(width)
-    #     else:
-    #         self.set_gripper_position(width, effort=effort)
-
-    #     response = SetGripperWidthResponse()
-    #     response.success = True
-    #     return response
     def set_gripper_width_handler(self, req):
         width = req.width
         effort = req.effort
 
-        self.grasp(width, force=effort)
+        if effort is None:
+            self.set_gripper_position(width)
+        else:
+            self.set_gripper_position(width, effort=effort)
 
         response = SetGripperWidthResponse()
         response.success = True

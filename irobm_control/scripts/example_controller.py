@@ -13,7 +13,7 @@ from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Point
 
 from irobm_control.srv import MoveTo, MoveToRequest, BasicTraj, BasicTrajRequest
-from irobm_control.srv import OpenGripper, OpenGripperRequest, CloseGripper, CloseGripperRequest, SetGripperWidth, SetGripperWidthRequest
+from irobm_control.srv import OpenGripper, OpenGripperRequest, CloseGripper, CloseGripperRequest, Grasp, GraspRequest
 
 class ExampleControllerNode:
     def __init__(self):
@@ -36,7 +36,7 @@ class ExampleControllerNode:
 
         self.open_gripper_client = rospy.ServiceProxy('/irobm_control/open_gripper', OpenGripper)
         self.close_gripper_client = rospy.ServiceProxy('/irobm_control/close_gripper', CloseGripper)
-        self.set_gripper_width_client = rospy.ServiceProxy('/irobm_control/set_gripper_width', SetGripperWidth)
+        self.set_gripper_width_client = rospy.ServiceProxy('/irobm_control/grasp_obj', Grasp)
 
     def extract_model_state(self, model_name):
         # Create a request object
@@ -90,10 +90,10 @@ class ExampleControllerNode:
         response = self.move_to_client(req)
         print(f'Executed move to pos1: {pos1}')
 
-        req = SetGripperWidthRequest()
+        req = GraspRequest()
         # req.width = 0.01125 # in sim
         req.width = 0.01075 #0.01075 since real cube is 0.43
-        req.effort = 20.0
+        req.force = 20.0
         response = self.set_gripper_width_client(req)
         print('Executed Gripper width')
 
@@ -143,10 +143,10 @@ class ExampleControllerNode:
         response = self.move_to_client(req)
         print(f'Executed move to pos1: {pos4}')
 
-        req = SetGripperWidthRequest()
+        req = GraspRequest()
         # req.width = 0.01125 # in sim
         req.width = 0.01075 #0.01075 since real cube is 0.43
-        req.effort = 20.0
+        req.force = 20.0
         response = self.set_gripper_width_client(req)
         print('Executed Gripper width')
 

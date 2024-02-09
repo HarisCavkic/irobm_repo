@@ -76,6 +76,7 @@ add_service_files(
   OpenGripper.srv
   SetGripperWidth.srv
   MoveTo.srv
+  Grasp.srv
   arc_path.srv
 )
 
