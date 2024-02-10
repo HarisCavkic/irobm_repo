@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 import rospy
+import numpy as np
+import random
+import math
 from geometry_msgs.msg import Pose, Quaternion, Point
 from tf.transformations import quaternion_from_euler
 from gazebo_msgs.srv import SpawnModel
@@ -170,7 +173,8 @@ def spawn_cubes(num_cubes, start_position):
                     ypose + row * distance_between_cubes,
                     zpose]
         print(f'X: {position[0]}  Y: {position[1]}  Z: {position[2]}')
-        orientation = [0, 0, 0]  # You can modify the orientation if needed
+        orientation = [0, 0, random.uniform(-math.pi, math.pi)]  # You can modify the orientation if needed
+        print(f'Orientation: {orientation}')
         spawn(i, position, orientation)
 
 if __name__ == "__main__":

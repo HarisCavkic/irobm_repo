@@ -68,6 +68,8 @@ class CubeTowerNode:
                 orient_quat = [orientation.x, orientation.y, orientation.z, orientation.w]
                 orient_rad = self.quaternion_to_radians(orient_quat)
                 rospy.loginfo(f"Model '{model_name}' - Position: {pos}, Orientation: {orient_rad}")
+                orient_deg = [math.degrees(angle) for angle in orient_rad]
+                print(f'Orientation Deg: {orient_deg}')
                 return pos, orient_rad
             else:
                 rospy.logwarn(f"Failed to get state for model '{model_name}'")
@@ -95,17 +97,18 @@ class CubeTowerNode:
                 cube_name = 'cube_' + str(i)
                 cube_pos, cube_orient = self.extract_model_state(cube_name) 
                 cube_pos[2] = cube_pos[2] - self.desk_h
+
+                cube_yaw = (cube_orient[0] + 2*math.pi) % (math.pi/2)
+                gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, cube_yaw])).tolist()
+                print(f'Gripper Orient: {gripper_orient}')
             else:
                 #add service call to receive cubes and choose one for further usage
                 pass
             
-            # just using the yaw since the other orientation might be problematic with the cubes
-            # gripper_orient = self.default_orient
-            # gripper_orient[2] = cube_orient[2]
 
             req = PickNPlaceRequest()
             req.cube_centroid = Point(*cube_pos)
-            req.orientation = Point(*self.default_orient)
+            req.orientation = Point(*gripper_orient)
             req.task = 'pick'
             response = self.pick_n_place_client(req)
             
