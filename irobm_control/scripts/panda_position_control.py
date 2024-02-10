@@ -2,6 +2,7 @@
 
 import rospy
 import sys
+import numpy as np
 import tf
 import tf.transformations as tft
 import moveit_commander
@@ -12,7 +13,7 @@ import math
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Point
-from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse, arc_path, arc_pathResponse
+from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse, ArcPath, ArcPathResponse
 from copy import deepcopy
 
 class PandaMoveNode:
@@ -30,19 +31,23 @@ class PandaMoveNode:
 
         if self.is_simulation:
             # Initialize Gazebo service
+            print('Position Control in sim')
             self.set_model_state_service = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
+            self.desk_h = np.array([0.0, 0.0, 0.787])
         else:
-            # Additional initialization for the real robot, if needed
-            pass
+            print('Position Control in real')
+            self.desk_h = np.array([0.0, 0.0, 0.0])
+
+        self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
 
         self.move_to = rospy.Service('/irobm_control/move_to', MoveTo, self.move_to_handler)
         self.basic_traj = rospy.Service('/irobm_control/basic_traj', BasicTraj, self.basic_traj_handler)
-        self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
-        self.arc_path_srv = rospy.Service('/arc_path', arc_path, self.arc_path_handler)
+        self.arc_path_srv = rospy.Service('/irobm_control/arc_path', ArcPath, self.arc_path_handler)
 
 
     def move_to_handler(self, req):
-        position = [req.position.x, req.position.y, req.position.z]
+        pos_np = np.array([req.position.x, req.position.y, req.position.z])
+        position = (pos_np + self.desk_h).tolist()
 
         if not req.w_orient:
             orientation = [math.pi, 0.0, -math.pi / 4]
@@ -61,7 +66,8 @@ class PandaMoveNode:
         orientation = []
 
         for i in range(len(req.position_list)):
-            temp_pos = [req.position_list[i].x, req.position_list[i].y, req.position_list[i].z]
+            temp_pos_np = np.array([req.position_list[i].x, req.position_list[i].y, req.position_list[i].z])
+            temp_pos = (temp_pos_np + self.desk_h).tolist()
 
             if not req.w_orient:
                 temp_orient = [math.pi, 0.0, -math.pi / 4]
@@ -82,12 +88,12 @@ class PandaMoveNode:
 
         return response
     
-    def arc_path_handler(self, req:arc_path._request_class):
+    def arc_path_handler(self, req:ArcPath._request_class):
         if req.radius == 0 and req.times == 0:
-            self.arc_path(req.center_of_circle)
+            self.arc_path(req.center_of_circle, req.height)
         else:
-            self.arc_path(req.center_of_circle, req.radius, req.times)
-        response = arc_pathResponse()
+            self.arc_path(req.center_of_circle, req.height, req.radius, req.times)
+        response = ArcPathResponse()
         response.success = True
         return response
         pass
@@ -210,7 +216,7 @@ class PandaMoveNode:
     def set_origin_position(self):
         self.move_panda_to_joint_position(self.origin_joint_pose)
 
-    def arc_path(self, center_of_circle:list, radius = 0.12, times=14):
+    def arc_path(self, center_of_circle:list, height, radius = 0.12, times=14):
         if center_of_circle.__len__() != 3:
             print("The input of center_of_circle is false!")
             return
@@ -218,9 +224,8 @@ class PandaMoveNode:
             print("The euler is too large!")
             return
         self.set_origin_position()
-        x = radius if radius < 0.6 else 0.4
         pose = self.group.get_current_pose().pose
-        pose.position.z = center_of_circle[2] + x + 0.115
+        pose.position.z = center_of_circle[2] + 0.115 + height + self.desk_h[2]
         pose.position.y = center_of_circle[1] + radius*math.sin(math.pi/24*times)
         pose.position.x = center_of_circle[0] + radius*math.cos(math.pi - math.pi/24*times)
         # x = pose.position.x

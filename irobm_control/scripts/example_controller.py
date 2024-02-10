@@ -7,13 +7,13 @@ import moveit_msgs.msg
 import geometry_msgs.msg
 import math
 import numpy as np
-from gazebo_msgs.srv import GetModelState
+from gazebo_msgs.srv import GetModelState, GetModelStateRequest
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Point
 
 from irobm_control.srv import MoveTo, MoveToRequest, BasicTraj, BasicTrajRequest
-from irobm_control.srv import OpenGripper, OpenGripperRequest, CloseGripper, CloseGripperRequest, SetGripperWidth, SetGripperWidthRequest
+from irobm_control.srv import OpenGripper, OpenGripperRequest, CloseGripper, CloseGripperRequest, Grasp, GraspRequest
 
 class ExampleControllerNode:
     def __init__(self):
@@ -25,10 +25,12 @@ class ExampleControllerNode:
 
         if self.is_simulation:
             # Initialize Gazebo service and relevant parameters
+            print('Example Controller is in sim')
             self.set_model_state_service = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
             self.get_model_state_service = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
             self.desk_h = np.array([0.0, 0.0, 0.787])
         else:
+            print('Example Controller is in real')
             self.desk_h = np.array([0.0, 0.0, 0.0])
 
         self.move_to_client = rospy.ServiceProxy('/irobm_control/move_to', MoveTo)
@@ -36,11 +38,11 @@ class ExampleControllerNode:
 
         self.open_gripper_client = rospy.ServiceProxy('/irobm_control/open_gripper', OpenGripper)
         self.close_gripper_client = rospy.ServiceProxy('/irobm_control/close_gripper', CloseGripper)
-        self.set_gripper_width_client = rospy.ServiceProxy('/irobm_control/set_gripper_width', SetGripperWidth)
+        self.grasp_client = rospy.ServiceProxy('/irobm_control/grasp_obj', Grasp)
 
     def extract_model_state(self, model_name):
         # Create a request object
-        request = GetModelState()
+        request = GetModelStateRequest()
         request.model_name = model_name
 
         try:
@@ -62,15 +64,15 @@ class ExampleControllerNode:
             return None, None
 
     def run(self):
-        pos0 = (np.array([0.5, 0.0, 0.5]) + np.array(self.desk_h)).tolist()
-        pos1 = (np.array([0.5, 0.0, 0.13]) + np.array(self.desk_h)).tolist()
-        pos2 = (np.array([0.5, 0.0, 0.33]) + np.array(self.desk_h)).tolist()
-        pos3 = (np.array([0.3, 0.3, 0.1315]) + np.array(self.desk_h)).tolist()
-        posA = (np.array([0.3, 0.3, 0.32]) + np.array(self.desk_h)).tolist()
-        pos4 = (np.array([0.5, -0.1, 0.13]) + np.array(self.desk_h)).tolist()
-        pos5 = (np.array([0.3, 0.3, 0.185]) + np.array(self.desk_h)).tolist()
-        posB = (np.array([0.3, 0.3, 0.374]) + np.array(self.desk_h)).tolist()
-        posC = (np.array([0.5, -0.1, 0.33]) + np.array(self.desk_h)).tolist()
+        pos0 = [0.5, 0.0, 0.5]
+        pos1 = [0.5, 0.0, 0.13]
+        pos2 = [0.5, 0.0, 0.33]
+        pos3 = [0.3, 0.3, 0.1315]
+        posA = [0.3, 0.3, 0.32]
+        pos4 = [0.5, -0.1, 0.13]
+        pos5 = [0.3, 0.3, 0.185]
+        posB = [0.3, 0.3, 0.374]
+        posC = [0.5, -0.1, 0.33]
         
         req = MoveToRequest()
         req.position = Point(*pos0)
@@ -90,11 +92,11 @@ class ExampleControllerNode:
         response = self.move_to_client(req)
         print(f'Executed move to pos1: {pos1}')
 
-        req = SetGripperWidthRequest()
+        req = GraspRequest()
         # req.width = 0.01125 # in sim
         req.width = 0.01075 #0.01075 since real cube is 0.43
-        req.effort = 20.0
-        response = self.set_gripper_width_client(req)
+        req.force = 20.0
+        response = self.grasp_client(req)
         print('Executed Gripper width')
 
         req = MoveToRequest()
@@ -143,11 +145,11 @@ class ExampleControllerNode:
         response = self.move_to_client(req)
         print(f'Executed move to pos1: {pos4}')
 
-        req = SetGripperWidthRequest()
+        req = GraspRequest()
         # req.width = 0.01125 # in sim
         req.width = 0.01075 #0.01075 since real cube is 0.43
-        req.effort = 20.0
-        response = self.set_gripper_width_client(req)
+        req.force = 20.0
+        response = self.grasp_client(req)
         print('Executed Gripper width')
 
         req = MoveToRequest()
@@ -175,6 +177,9 @@ class ExampleControllerNode:
         response = self.move_to_client(req)
         print(f'Executed move to pos1: {posB}')
 
+    def run1(self):
+        x = self.extract_model_state('cube_0')
+        print(f'This is the position of x: {x}')
 
 
 
