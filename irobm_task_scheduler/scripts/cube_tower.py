@@ -94,7 +94,7 @@ class CubeTowerNode:
         req.center_of_circle = [0.5, 0.0, 0.0]
         req.radius = 0.2
         req.times = 8
-        req.height = 0.5
+        req.height = 0.5+self.desk_h
         response = self.arc_path_client(req)
 
         cube_counter = self.num_of_cubes
