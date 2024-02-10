@@ -3,14 +3,13 @@
     <include file="$(find panda_moveit_config)/launch/franka_control.launch" pass_all_args="true">
         <arg name="robot_ip" value="192.168.1.55"/>
     </include>
-
-
-  <include file="$(find irobm_perception)/launch/zed2_with_transformation.launch"/>
-
-           <!--  args="-0.097397 0 0.02724111 0 -0.824473 0 panda_hand zed2_left_camera_frame 500" />-->
+    
     
 
    <!-- Include Franka Control Launch File -->
     <include file="$(find irobm_control)/launch/irobm_control.launch" pass_all_args="true"/>
+
+    <!-- Include Point Cloud Handler and camera -->
+      <include file="$(find irobm_perception)/launch/pc_handler.launch" pass_all_args="true"/>
 
 </launch>

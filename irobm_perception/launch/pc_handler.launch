@@ -1,0 +1,11 @@
+<launch>
+
+    <include file="$(find irobm_perception)/launch/zed2_with_transformation.launch"/>
+
+        <!--  args="-0.097397 0 0.02724111 0 -0.824473 0 panda_hand zed2_left_camera_frame 500" />-->
+
+    <node pkg="irobm_perception" type="point_cloud_handler.py" name="point_cloud_handler" respawn="true" output="screen"/>
+
+      
+
+</launch>

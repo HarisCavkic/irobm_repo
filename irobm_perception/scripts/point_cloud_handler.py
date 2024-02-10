@@ -13,6 +13,10 @@ import tf2_ros
 import matplotlib.pyplot as plt
 from geometry_msgs.msg import Point
 from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, MoveToRequest, BasicTrajResponse
+import tf.transformations as tf_trans
+
+from irobm_perception.srv import CubeCentroids, CubeCentroidsResponse
+
 
 DATA_PATH = Path(__file__).parent.parent / "data"
 
@@ -43,8 +47,11 @@ class PCHandler():
         self.combined_pcd = None
         self.transformations = None
         self.save_signal = False
+
+        self.move_to = rospy.Service('/irobm_perception/cube_centroids', CubeCentroids, self.point_cloud_handle)
+
         # initial setup
-        self.check_service_and_process_positions(visualize=True)
+        #self.check_service_and_process_positions(visualize=False)
         # todo: need current positions of the robot to calculate the offset to the objects
 
     def shutdown_procedure(self):
@@ -62,6 +69,35 @@ class PCHandler():
             finally:
                 self.save_signal = False
 
+    def point_cloud_handle(self, req):
+        self.check_service_and_process_positions(visualize=False)
+
+        print("Trying to go to approximated positions")
+
+        response = CubeCentroidsResponse()
+        positions = list()
+        rotations = list()
+
+        for transformation in self.transformations:
+            position = list(transformation[:3, 3])
+            rotation_euler = tf_trans.euler_from_matrix(list(transformation[:3,:3]))
+            
+            positions.append(Point(*position))
+            rotations.append(Point(*rotation_euler))
+
+        print("Found positions: ")
+        print(positions)
+        print("Found orientations: ")
+        print(rotations)
+
+        response.position = positions
+        response.orientation = rotations
+
+        return response
+
+
+
+
     def check_service_and_process_positions(self, visualize=False):
         rospy.wait_for_service('/move_to')
         for position in self.positions:
@@ -71,6 +107,7 @@ class PCHandler():
             rospy.sleep(1)
             self.save_signal = True
             self.process_received_cloud()
+
         self.do_cloud_preproc(visualize)
 
     def move_to_position_and_wait(self, position):
@@ -177,21 +214,6 @@ class PCHandler():
         print(f"Found {len(segmented_cubes)} cubes")
 
         self.transformations = self.get_transformations(segmented_cubes, visualize)
-
-        print("Trying to go to approximated positions")
-
-        for transformation in self.transformations:
-            position = list(transformation[:3, 3])
-            position[2] += 0.12 # todo z offset, do we need it for real robot!!!
-            param_list = [position[1], position[0], position[2]]
-            orientation = [math.pi, 0., -0.8]
-            param_list.append(orientation)
-            param_list.append(True)
-            input(f"Pres enter to move to {param_list}")
-            response = self.move_to_position_and_wait(param_list)
-            print("Response: ", response)
-            rospy.sleep(2)
-            self.move_to_position_and_wait(self.home_position)
 
     def combine_pointclouds(self,
                             voxel_size=.001,
