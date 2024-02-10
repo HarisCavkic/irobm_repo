@@ -28,9 +28,11 @@ class HigherLvLControlNode:
             self.set_model_state_service = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
             self.get_model_state_service = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
             self.desk_h = np.array([0.0, 0.0, 0.787])
+            self.gripper_offset = np.array([0.0, 0.0, 0.11])
         else:
             print('Higher lvl control is in real')
             self.desk_h = np.array([0.0, 0.0, 0.0])
+            self.gripper_offset = np.array([0.0, 0.0, 0.12])
 
         self.cube_dim = 0.045
         self.default_force = 20.0
