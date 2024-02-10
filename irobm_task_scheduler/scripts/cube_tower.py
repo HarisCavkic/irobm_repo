@@ -106,7 +106,11 @@ class CubeTowerNode:
                 cube_pos[2] = cube_pos[2] - self.desk_h
 
                 cube_yaw = (cube_orient[0] + 2*math.pi) % (math.pi/2)
-                gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, cube_yaw])).tolist()
+                if cube_yaw >= math.pi / 4:
+                    opposit_rot = math.pi/2 - cube_yaw
+                    gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, -opposit_rot])).tolist()
+                else:
+                    gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, cube_yaw])).tolist()
                 print(f'Gripper Orient: {gripper_orient}')
             else:
                 #add service call to receive cubes and choose one for further usage
