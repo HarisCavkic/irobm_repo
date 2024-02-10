@@ -89,7 +89,14 @@ class CubeTowerNode:
         # Convert angles from radians to degrees and return as a list
         return [roll, pitch, yaw]
     
-    def build_tower(self):  
+    def build_tower(self):
+        req = ArcPathRequest()
+        req.center_of_circle = [0.5, 0.0, 0.0]
+        req.radius = 0.2
+        req.times = 8
+        req.height = 0.5
+        response = self.arc_path_client(req)
+
         cube_counter = self.num_of_cubes
 
         for i in range(cube_counter):

@@ -90,9 +90,9 @@ class PandaMoveNode:
     
     def arc_path_handler(self, req:ArcPath._request_class):
         if req.radius == 0 and req.times == 0:
-            self.arc_path(req.center_of_circle)
+            self.arc_path(req.center_of_circle, req.height)
         else:
-            self.arc_path(req.center_of_circle, req.radius, req.times)
+            self.arc_path(req.center_of_circle, req.height, req.radius, req.times)
         response = ArcPathResponse()
         response.success = True
         return response
@@ -216,7 +216,7 @@ class PandaMoveNode:
     def set_origin_position(self):
         self.move_panda_to_joint_position(self.origin_joint_pose)
 
-    def arc_path(self, center_of_circle:list, radius = 0.12, times=14):
+    def arc_path(self, center_of_circle:list, height, radius = 0.12, times=14):
         if center_of_circle.__len__() != 3:
             print("The input of center_of_circle is false!")
             return
@@ -224,9 +224,8 @@ class PandaMoveNode:
             print("The euler is too large!")
             return
         self.set_origin_position()
-        x = radius if radius < 0.6 else 0.4
         pose = self.group.get_current_pose().pose
-        pose.position.z = center_of_circle[2] + x + 0.115
+        pose.position.z = center_of_circle[2] + 0.115 + height + self.desk_h[2]
         pose.position.y = center_of_circle[1] + radius*math.sin(math.pi/24*times)
         pose.position.x = center_of_circle[0] + radius*math.cos(math.pi - math.pi/24*times)
         # x = pose.position.x

@@ -1,6 +1,7 @@
 #Request
 float64[3] center_of_circle
 float64 radius
+float64 height
 int64 times
 ---
 #Response
