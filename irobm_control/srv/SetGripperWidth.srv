@@ -1,0 +1,6 @@
+#Request
+float64 width
+float64 effort
+---
+#Response
+bool success

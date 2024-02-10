@@ -1,7 +1,12 @@
 <launch>
     <arg name="pkg" default="irobm_control" />
-    <arg name="executable" default="panda_position_control.py" />
+    <arg name="is_sim_arg" default="false" />
 
+    <param name="is_sim" value="$(arg is_sim_arg)" />
 
-    <node name="irobm_control_node" pkg="$(arg pkg)" type="$(arg executable)" respawn="true" output="screen"/>
+    <node name="panda_move_node" pkg="$(arg pkg)" type="panda_position_control.py" respawn="true" output="screen"/>
+
+    <node name="panda_gripper_node" pkg="$(arg pkg)" type="panda_gripper_control.py" respawn="true" output="screen"/>
+
+    <node name="higher_lvl_control_node" pkg="$(arg pkg)" type="higher_lvl_control_func.py" respawn="true" output="screen"/>
 </launch>

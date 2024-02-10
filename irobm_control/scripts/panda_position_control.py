@@ -2,43 +2,59 @@
 
 import rospy
 import sys
+import numpy as np
 import tf
+import tf.transformations as tft
 import moveit_commander
+import moveit_commander.robot as mr
 import moveit_msgs.msg
 import geometry_msgs.msg
 import math
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Point
-from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse
+from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse, ArcPath, ArcPathResponse
+from copy import deepcopy
 
 class PandaMoveNode:
     def __init__(self):
         moveit_commander.roscpp_initialize(sys.argv)
-        rospy.init_node('panda_move_node', anonymous=True)
 
         # Initialize MoveIt!
-        self.robot = moveit_commander.RobotCommander()
-        self.group = moveit_commander.MoveGroupCommander("panda_arm")
+        self.robot = mr.RobotCommander()
+        self.group = mr.MoveGroupCommander("panda_arm")
+
 
         # Check if running in simulation
-        self.is_simulation = True
+        # in the simulation all z-values have to be increased by 0.787 due to the table
+        self.is_simulation = rospy.get_param('is_sim', True)
+
+        velocity = rospy.get_param('/robot_description_planning/default_velocity_scaling_factor', True)
+        print(f'VElocity: {velocity}')
+        rospy.set_param('/robot_description_planning/default_velocity_scaling_factor', 0.3)
 
         if self.is_simulation:
             # Initialize Gazebo service
+            print('Position Control in sim')
             self.set_model_state_service = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
+            self.desk_h = np.array([0.0, 0.0, 0.787])
         else:
-            # Additional initialization for the real robot, if needed
-            pass
+            print('Position Control in real')
+            self.desk_h = np.array([0.0, 0.0, 0.0])
 
-        self.move_to = rospy.Service('/move_to', MoveTo, self.move_to_handler)
+        self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
+
+        self.move_to = rospy.Service('/irobm_control/move_to', MoveTo, self.move_to_handler)
+        self.basic_traj = rospy.Service('/irobm_control/basic_traj', BasicTraj, self.basic_traj_handler)
+        self.arc_path_srv = rospy.Service('/irobm_control/arc_path', ArcPath, self.arc_path_handler)
 
 
     def move_to_handler(self, req):
-        position = [req.position.y, req.position.x, req.position.z]
+        pos_np = np.array([req.position.x, req.position.y, req.position.z])
+        position = (pos_np + self.desk_h).tolist()
 
         if not req.w_orient:
-            orientation = [3.1415, 0.0, 0.0]
+            orientation = [math.pi, 0.0, -math.pi / 4]
         else:
             orientation = [req.orientation[0], req.orientation[1], req.orientation[2]]
 
@@ -49,20 +65,25 @@ class PandaMoveNode:
         
         return response
 
-    def basic_traj_handler(self, req):
+    def basic_traj_handler(self, req:BasicTraj._request_class):
         position = []
         orientation = []
 
         for i in range(len(req.position_list)):
-            temp_pos = [req.position[i].x, req.position[i].y, req.position[i].z]
+            temp_pos_np = np.array([req.position_list[i].x, req.position_list[i].y, req.position_list[i].z])
+            temp_pos = (temp_pos_np + self.desk_h).tolist()
 
-            if req.w_orient:
-                temp_orient = [3.1415, 0.0, 0.0]
+            if not req.w_orient:
+                temp_orient = [math.pi, 0.0, -math.pi / 4]
             else:
-                temp_orient = [req.orientation[0], req.orientation[1], req.orientation]
+                temp_orient = [req.orientation[i].x, req.orientation[i].y, req.orientation[i].z]
+
             
             position.append(temp_pos)
             orientation.append(temp_orient)
+
+        if not(len(position) == len(orientation)):
+            print("Position and Orientation length are not the same")
 
         self.move_to_positions(position, orientation)
 
@@ -70,10 +91,25 @@ class PandaMoveNode:
         response.success = True
 
         return response
+    
+    def arc_path_handler(self, req:ArcPath._request_class):
+        if req.radius == 0 and req.times == 0:
+            self.arc_path(req.center_of_circle, req.height)
+        else:
+            self.arc_path(req.center_of_circle, req.height, req.radius, req.times)
+        response = ArcPathResponse()
+        response.success = True
+        return response
+        pass
 
-    def euler_to_quaternion(self, roll, pitch, yaw):
-        quaternion = tf.transformations.quaternion_from_euler(roll, pitch, yaw)
+    def euler_to_quaternion(self, roll, pitch, yaw, model = 'sxyz'):
+        quaternion = tft.quaternion_from_euler(roll, pitch, yaw, model)
         return geometry_msgs.msg.Quaternion(*quaternion)
+    
+    def quaternion_to_euler(self, q:geometry_msgs.msg.Quaternion, model = 'sxyz'):
+        q_l = [q.x, q.y, q.z, q.w]
+        euler = list(tft.euler_from_quaternion(q_l, model))
+        return euler
 
     def set_model_state(self, pose, twist):
         rospy.wait_for_service('/gazebo/set_model_state')
@@ -100,7 +136,7 @@ class PandaMoveNode:
             orientation_euler = common_orientation_euler[i]
             self.move_panda_to_position(position, orientation_euler)
 
-    def move_panda_to_position(self, position, euler_angles):
+    def move_panda_to_position(self, position, euler_angles, model = 'sxyz'):
         # Set the target pose for the end-effector
         target_pose = geometry_msgs.msg.Pose()
         target_pose.position.x = position[0]
@@ -108,11 +144,11 @@ class PandaMoveNode:
         target_pose.position.z = position[2]
 
         if euler_angles == None:
-            euler_angles = [3.1415, 0.0, 0.0]
+            euler_angles = [math.pi, 0.0, -math.pi/4]
         
         # Set the orientation using Euler angles if provided
         if euler_angles is not None:
-            quaternion = self.euler_to_quaternion(*euler_angles)
+            quaternion = self.euler_to_quaternion(*euler_angles, model)
             target_pose.orientation = quaternion
         else:
             target_pose.orientation.w = 1.0  # Default to identity quaternion if not provided
@@ -166,19 +202,85 @@ class PandaMoveNode:
         self.move_panda_to_position(target_position, target_orientation)
 
         if self.is_simulation:
-            target_pos_ls = [[0.3, 0.0, 1.3], [0.5, 0.0, 1.1], [0.5, 0.0, 1.4]]
+            target_pos_ls = [[0.3, 0.0, 1.3], [0.5, 0.0, 1.1], [0.5, 0.3, 1.4]]
             target_orient = [target_orientation, target_orientation, target_orientation]
         else:
             target_pos_ls = [[0.4, 0.0, 0.2], [0.4, 0.3, 0.4], [0.5, 0.3, 0.5]]
             target_orient = [target_orientation, target_orientation, target_orientation]
         self.move_to_positions(target_pos_ls, target_orient)
+        # self.set_origin_position()
+    
+    def move_panda_to_joint_position(self, joint_group_position:list):
+        move_group = self.group
+        try:
+            move_group.go(joint_group_position, wait=True)
+        except joint_group_position.__len__() != 7:
+            print('The data is not enough!')
+    
+    def set_origin_position(self):
+        self.move_panda_to_joint_position(self.origin_joint_pose)
+
+    def arc_path(self, center_of_circle:list, height, radius = 0.12, times=14):
+        if center_of_circle.__len__() != 3:
+            print("The input of center_of_circle is false!")
+            return
+        if times > 24:
+            print("The euler is too large!")
+            return
+        self.set_origin_position()
+        pose = self.group.get_current_pose().pose
+        pose.position.z = center_of_circle[2] + 0.115 + height + self.desk_h[2]
+        pose.position.y = center_of_circle[1] + radius*math.sin(math.pi/24*times)
+        pose.position.x = center_of_circle[0] + radius*math.cos(math.pi - math.pi/24*times)
+        # x = pose.position.x
+        # y = pose.position.y
+        q = self.quaternion_to_euler(pose.orientation)
+        pose.orientation = self.euler_to_quaternion(q[0], q[1], q[2]-math.pi/12/2*times)
+        q2 = q[2]-math.pi/12/2*times
+        waypoints = []
+        waypoints.append(deepcopy(pose))
+        for i in range(1, times+1):
+            pose.orientation = self.euler_to_quaternion(q[0], q[1], q2+math.pi/12*i)
+            pose.position.x = center_of_circle[0] + radius * math.cos(math.pi - math.pi/12/2*times + math.pi/12*i)
+            pose.position.y = center_of_circle[1] + radius * math.sin(math.pi - math.pi/12/2*times + math.pi/12*i)
+            waypoints.append(deepcopy(pose))
+        plan, fraction = self.group.compute_cartesian_path(waypoints, 0.01, 0)
+        self.group.execute(plan)
+        pass
+
+    def grasp_position_generation(self, pose_of_cube:geometry_msgs.msg.Pose):
+        euler_angle = self.quaternion_to_euler(pose_of_cube.orientation)
+        pose = deepcopy(pose_of_cube)
+        grasp_positions_dict = dict()
+        n_euler_angle = [euler_angle[0] + math.pi, euler_angle[1], euler_angle[2] - math.pi/4]
+        pose.orientation = self.euler_to_quaternion(*n_euler_angle)
+        pose.position.z = pose.position.z + 0.115
+        grasp_positions_dict.update({'topm':deepcopy(pose)})
+        n_euler_angle = [euler_angle[0] + math.pi, euler_angle[1], euler_angle[2] - 3*math.pi/4]
+        pose.orientation = self.euler_to_quaternion(*n_euler_angle)
+        grasp_positions_dict.update({'tops':deepcopy(pose)})
+        pose.position.z = pose_of_cube.position.z
+        theta = [euler_angle[2] + i*math.pi/2 for i in range(-2, 2)]
+        orien_list = ['right', 'front', 'left', 'back']
+        for i in range(len(theta)):
+            n_euler_angle = [euler_angle[0] + math.pi/2, euler_angle[1]+theta[i], - math.pi/4]
+            pose.orientation = self.euler_to_quaternion(*n_euler_angle, 'rxyz')
+            pose.position.x = pose_of_cube.position.x + 0.115*math.cos(theta[i])
+            pose.position.y = pose_of_cube.position.y + 0.115*math.sin(theta[i])
+            grasp_positions_dict.update({orien_list[i]:deepcopy(pose)})
+        return grasp_positions_dict
+        pass
+
+    def print_current_pose(self):
+        pose = self.group.get_current_pose().pose
+        euler_angles = [angle*180/math.pi for angle in self.quaternion_to_euler(pose.orientation)]
+        print(f"euler angle(xyz): {euler_angles}\nposition(xyz): ({pose.position.x}, {pose.position.y}, {pose.position.z})")
 
 if __name__ == '__main__':
-    try:
-        panda_move_node = PandaMoveNode()
-        panda_move_node.run()
-    except rospy.ROSInterruptException:
-        pass
+    # rospy.init_node('panda_move_node', log_level=rospy.DEBUG) #node with log set to debug
+    rospy.init_node('panda_move_node')
+    position_class = PandaMoveNode()
+    rospy.spin()
 
 
 

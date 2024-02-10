@@ -8,12 +8,14 @@ project(irobm_control)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  message_generation
   franka_zed_gazebo
   roscpp
   rospy
   std_msgs
+  rosbag
   geometry_msgs
+  message_generation
+  franka_gripper
 )
 
 ## System dependencies are found with CMake's conventions
@@ -61,8 +63,14 @@ add_service_files(
   DIRECTORY
   srv
   FILES
-  MoveTo.srv
   BasicTraj.srv
+  CloseGripper.srv
+  OpenGripper.srv
+  SetGripperWidth.srv
+  MoveTo.srv
+  Grasp.srv
+  PickNPlace.srv
+  ArcPath.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -109,10 +117,14 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  CATKIN_DEPENDS std_msgs franka_zed_gazebo roscpp rospy std_msgs message_runtime
-#  INCLUDE_DIRS include
-#  LIBRARIES irobm_control
-#  DEPENDS system_lib
+ # INCLUDE_DIRS include
+ # LIBRARIES irobm_control
+ CATKIN_DEPENDS 
+  franka_zed_gazebo 
+  roscpp rospy 
+  std_msgs 
+  franka_gripper
+  message_runtime
 )
 
 ###########
@@ -125,6 +137,8 @@ include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
 )
+include_directories(${THIS_PACKAGE_INCLUDE_DIRS})
+include_directories(SYSTEM ${catkin_INCLUDE_DIRS} ${Boost_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIRS})
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -134,7 +148,7 @@ include_directories(
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(robot_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
@@ -149,7 +163,7 @@ include_directories(
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(move_robot ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
@@ -165,14 +179,9 @@ include_directories(
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# catkin_install_python(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
-
 catkin_install_python(PROGRAMS
-  scripts/panda_gripper_control.py
   scripts/panda_position_control.py
+  scripts/panda_gripper_control.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
