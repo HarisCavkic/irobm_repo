@@ -29,6 +29,10 @@ class PandaMoveNode:
         # in the simulation all z-values have to be increased by 0.787 due to the table
         self.is_simulation = rospy.get_param('is_sim', True)
 
+        velocity = rospy.get_param('/robot_description_planning/default_velocity_scaling_factor', True)
+        print(f'VElocity: {velocity}')
+        rospy.set_param('/robot_description_planning/default_velocity_scaling_factor', 0.3)
+
         if self.is_simulation:
             # Initialize Gazebo service
             print('Position Control in sim')
