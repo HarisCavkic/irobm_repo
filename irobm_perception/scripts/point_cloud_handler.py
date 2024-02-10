@@ -16,6 +16,7 @@ from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, MoveToRequest, 
 
 DATA_PATH = Path(__file__).parent.parent / "data"
 
+TEST = True
 
 class PCHandler():
     """
@@ -33,8 +34,8 @@ class PCHandler():
         rospy.on_shutdown(self.shutdown_procedure)
         self.home_position = [0, .5, 0.5, [3.1415, 0, -0.8], True]
         self.positions = [[0, .5, 0.5, [3.1415, 0, -0.8], True],
-                          [-.25, .4, 0.45, [3.1415, -0.2, 0.8], True],
-                          [.25, .4, 0.45, [3.1415, -0.2, -math.pi/2], True]
+                          #[-.22, .4, .4, [3.1415, -0.4, 1], True],
+                          #[.4, .5, 0.45, [3.1415, -0.7, -math.pi/2 - 0.15], True]
                           ]
 
         self.current_cloud = None
@@ -98,7 +99,7 @@ class PCHandler():
         self.save_cloud(self.current_cloud)
         self.current_cloud = None
 
-    def save_cloud(self, pc2_msg, test=False):
+    def save_cloud(self, pc2_msg, test=TEST):
         print("Saving cloud")
         points = point_cloud2.read_points(pc2_msg, field_names=("x", "y", "z"), skip_nans=True)
 
@@ -115,12 +116,12 @@ class PCHandler():
                                               lookat=[0, 1, 0],
                                               up=[0., 0, 1])
         # todo check weather this all is necessary
-        mask1 = np.where(points_array[:, 0] > 0.1, True, False)
-        mask2 = np.where(points_array[:, 0] < 65., True, False)
-        mask3 = np.where(points_array[:, 1] < .75, True, False)
-        mask4 = np.where(points_array[:, 1] > -0.75, True, False)
-        mask5 = np.where(points_array[:, 2] > -.01, True, False)
-        mask6 = np.where(points_array[:, 2] < 0.15, True, False)
+        mask1 = np.where(points_array[:, 0] > 0.2, True, False)
+        mask2 = np.where(points_array[:, 0] < 0.82, True, False)
+        mask3 = np.where(points_array[:, 1] < 0.4, True, False)
+        mask4 = np.where(points_array[:, 1] > -0.4, True, False)
+        mask5 = np.where(points_array[:, 2] > 0.01, True, False)
+        mask6 = np.where(points_array[:, 2] < 0.08, True, False)
         mask = np.logical_and(mask6, 
                                 np.logical_and(mask5, 
                                                 np.logical_and(mask4, 
@@ -156,19 +157,19 @@ class PCHandler():
 
         print("Removing outliers")
         # remove outliers, i.e., do filtering
-        self.remove_outliers(visualize)
+        self.remove_outliers(visualize, nb_neighbors=10, std_ratio=3)
 
         # estimate the normals
         print("estimate the normals")
         self.estimate_normals(visualize)
 
         # RANSAC Planar Segmentation, i.e., remove the desk
-        print("RANSAC")
-        self.run_RANSAC_plane(visualize)
+        #print("RANSAC")
+        #self.run_RANSAC_plane(visualize)
 
-        print("Removing outliers")
+        #print("Removing outliers")
         # remove outliers, i.e., do filtering
-        self.remove_outliers(visualize, nb_neighbors=50, std_ratio=3)
+        #self.remove_outliers(visualize, nb_neighbors=50, std_ratio=3)
 
         # db scan rest of the cloud, i.e., segment the cubes
         print("DB SCAN")
@@ -181,7 +182,7 @@ class PCHandler():
 
         for transformation in self.transformations:
             position = list(transformation[:3, 3])
-            position[2] += 0.08  # todo z offset, do we need it for real robot!!!
+            position[2] += 0.12 # todo z offset, do we need it for real robot!!!
             param_list = [position[1], position[0], position[2]]
             orientation = [math.pi, 0., -0.8]
             param_list.append(orientation)
@@ -223,7 +224,7 @@ class PCHandler():
             o3d.visualization.draw_geometries([pcd_combined_down])  # todo check weather 1.3 is good or should be lower
         return pcd_combined_down
 
-    def remove_outliers(self, visualize=False, nb_neighbors=16, std_ratio=5):
+    def remove_outliers(self, visualize=False, nb_neighbors=10, std_ratio=5):
         """
             remove outliers, i.e., do filtering
         """
@@ -247,7 +248,7 @@ class PCHandler():
             o3d.visualization.draw_geometries([self.combined_pcd])
 
     def run_RANSAC_plane(self, visualize=False):
-        pt_to_plane_dist = .01
+        pt_to_plane_dist = .013
         plane_model, inliners = self.combined_pcd.segment_plane(distance_threshold=pt_to_plane_dist, ransac_n=5,
                                                                 num_iterations=100)
         inlier_cloud = self.combined_pcd.select_by_index(inliners)
@@ -296,9 +297,8 @@ class PCHandler():
 
         for segment in segmented_cubes:
             # for safety create cube each time
-            cube_model = self.create_cube_model(0.046)
-            cube_model_cloud = cube_model.sample_points_uniformly(number_of_points=6000)  # mesh to pcd
-
+            cube_model = self.create_cube_model(0.045)
+            cube_model_cloud = cube_model.sample_points_uniformly(number_of_points=5000)  # mesh to pcd
             initial_transformation = np.eye(4)
             initial_transformation[:3, 3] = segment.get_center()  # push near target cloud
             cube_model_cloud.transform(initial_transformation)
@@ -332,14 +332,15 @@ class PCHandler():
         open3d.geometry.TriangleMesh: The 3D model of the cube.
         """
         # Create a cube mesh
+        height = (side_length / 3) * 2
         cube_mesh = o3d.geometry.TriangleMesh.create_box(width=side_length,
-                                                         height=side_length,
+                                                         height=height,
                                                          depth=side_length)
 
         # only use 3 sides of the cube (not full cube is generated)
         # this is due to fact that the cubes in the scanned
         # point cloud are not full and often are lacking sides
-        # cube_mesh.remove_vertices_by_index([1])
+        cube_mesh.remove_vertices_by_index([1])
 
         # Translate the cube to center it at the origin
         # this is important for icp, as we want to get position and orientation relative to base

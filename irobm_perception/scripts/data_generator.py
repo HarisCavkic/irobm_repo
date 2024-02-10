@@ -68,23 +68,24 @@ class PCHandler():
         # Convert points to a numpy array
         points_array = np.array(list(points))
         if transform:
-            mask = np.where(points_array[:, 0] > 0, True, False)
-            mask2 = np.where(points_array[:, 0] < 1., True, False)
-            mask3 = np.where(points_array[:, 1] < .75, True, False)
-            mask4 = np.where(points_array[:, 1] > -0.75, True, False)
-            mask5 = np.where(points_array[:, 2] > -.01, True, False)
-            mask6 = np.where(points_array[:, 2] < 0.15, True, False)
+            mask1 = np.where(points_array[:, 0] > 0.2, True, False)
+            mask2 = np.where(points_array[:, 0] < 0.82, True, False)
+            mask3 = np.where(points_array[:, 1] < 0.4, True, False)
+            mask4 = np.where(points_array[:, 1] > -0.4, True, False)
+            mask5 = np.where(points_array[:, 2] > 0.01, True, False)
+            mask6 = np.where(points_array[:, 2] < 0.08, True, False)
             mask = np.logical_and(mask6, 
-                                  np.logical_and(mask5, 
-                                                 np.logical_and(mask4, 
-                                                                np.logical_and(mask, np.logical_and(mask2, mask3)))))
+                                    np.logical_and(mask5, 
+                                                    np.logical_and(mask4, 
+                                                    np.logical_and(mask3, 
+                                                    np.logical_and(mask1, mask2)))))
             #mask = np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3)))
             points_array_filtered = points_array[mask]
-            file_path = str(DATA_PATH / f'point_cloud_transformed_raw{self.transform_index}.npy')
+            file_path = str(DATA_PATH / f'point_cloud_transformed_test{self.transform_index}.npy')
             self.transform_index += 1
         else:
             points_array_filtered = points_array
-            file_path = str(DATA_PATH / f'point_cloud_new{self.index}.npy')
+            file_path = str(DATA_PATH / f'point_cloud_test{self.index}.npy')
             self.index += 1
         
         print("Its good writing")
@@ -117,13 +118,14 @@ class PCHandler():
         point_cloud.paint_uniform_color([1, 0, 0])
         point_cloud_filtered = o3d.geometry.PointCloud()
         point_cloud_filtered.points = o3d.utility.Vector3dVector(points_array_filtered)
-        point_cloud_filtered.paint_uniform_color([0.6, .6 ,0.6])
+        point_cloud_filtered.paint_uniform_color([0, 1 ,0])
         coord_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
-        o3d.visualization.draw_geometries([point_cloud_filtered, coord_axes], zoom=0.3,
+        o3d.visualization.draw_geometries([point_cloud, point_cloud_filtered, coord_axes], zoom=0.3,
                                               front=[-1, 0, 0],
                                               lookat=[0, 1, 0],
                                               up=[0., 0, 1])
         self.save_signal = False
+        exit(0)
         """
         import time
         import yaml 
