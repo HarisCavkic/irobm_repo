@@ -71,6 +71,7 @@ add_service_files(
   Grasp.srv
   PickNPlace.srv
   ArcPath.srv
+  Homing.srv
 )
 
 ## Generate actions in the 'action' folder

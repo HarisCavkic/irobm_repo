@@ -15,21 +15,24 @@ from geometry_msgs.msg import Point
 
 from irobm_control.srv import MoveTo, MoveToRequest, BasicTraj, BasicTrajRequest
 from irobm_control.srv import OpenGripper, OpenGripperRequest, CloseGripper, CloseGripperRequest, Grasp, GraspRequest
-from irobm_control.srv import PickNPlace, PickNPlaceRequest, ArcPath, ArcPathRequest
+from irobm_control.srv import PickNPlace, PickNPlaceRequest, ArcPath, ArcPathRequest, Homing, HomingRequest
+from irobm_perception.srv import CubeCentroids, CubeCentroidsRequest
 
 class CubeTowerNode:
     def __init__(self):
         rospy.init_node('cube_tower_node', log_level=rospy.DEBUG)
 
-        self.is_simulation = True
+        self.is_simulation = False
 
         self.num_of_cubes = 4
-        self.tower_pos = np.array([0.3, -0.3, 0.0])
+        self.tower_pos = np.array([0.45, -0.45, 0.0])
         self.cube_dim = 0.045
 
-        self.desk_h = 0.787
+        self.desk_h = 0.787 if self.is_simulation else 0.
 
         self.default_orient = [math.pi, 0.0, -math.pi / 4]
+
+        self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
 
         if self.is_simulation:
             print('Cube Tower is in sim')
@@ -37,17 +40,18 @@ class CubeTowerNode:
             self.set_model_state_service = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
             self.get_model_state_service = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
 
-
         # Service Clients
         self.move_to_client = rospy.ServiceProxy('/irobm_control/move_to', MoveTo)
         self.basic_traj_client = rospy.ServiceProxy('/irobm_control/basic_traj', BasicTraj)
         self.arc_path_client = rospy.ServiceProxy('/irobm_control/arc_path', ArcPath)
+        self.homing_client = rospy.ServiceProxy('/irobm_control/homing', Homing)
 
         self.open_gripper_client = rospy.ServiceProxy('/irobm_control/open_gripper', OpenGripper)
         self.grasp_client = rospy.ServiceProxy('/irobm_control/grasp_obj', Grasp)
 
         self.pick_n_place_client = rospy.ServiceProxy('/irobm_control/pick_n_place', PickNPlace)
-
+        self.pc_handler = rospy.ServiceProxy('/irobm_perception/cube_centroids', CubeCentroids)
+        rospy.wait_for_service('/irobm_perception/cube_centroids')
 
     def extract_model_state(self, model_name):
         # Create a request object
@@ -88,6 +92,8 @@ class CubeTowerNode:
             
         # Convert angles from radians to degrees and return as a list
         return [roll, pitch, yaw]
+
+
     
     def build_tower(self):
         req = ArcPathRequest()
@@ -95,26 +101,48 @@ class CubeTowerNode:
         req.radius = 0.2
         req.times = 8
         req.height = 0.5
-        response = self.arc_path_client(req)
-
+        print("Starting the arc movement")
+        #response = self.arc_path_client(req)
+        print("Done with the arc movement")
         cube_counter = self.num_of_cubes
+
+        req = HomingRequest()
+        response = self.homing_client(req)
+
+        if not self.is_simulation:
+            print("Calling the point cloud handler")
+            req = CubeCentroidsRequest()
+            responsePC = self.pc_handler(req)
+            print("Done with the point cloud handler")
+            rospy.sleep(1)
+            cube_counter = len(responsePC.position)
+            print(f'Found Cubes: {cube_counter}')
 
         for i in range(cube_counter):
             if self.is_simulation:
                 cube_name = 'cube_' + str(i)
-                cube_pos, cube_orient = self.extract_model_state(cube_name) 
-                cube_pos[2] = cube_pos[2] - self.desk_h
+                cube_pos, cube_orient = self.extract_model_state(cube_name)
+                cube_z_orient = cube_orient[0] 
+                
 
-                cube_yaw = (cube_orient[0] + 2*math.pi) % (math.pi/2)
-                if cube_yaw >= math.pi / 4:
-                    opposit_rot = math.pi/2 - cube_yaw
-                    gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, -opposit_rot])).tolist()
-                else:
-                    gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, cube_yaw])).tolist()
-                print(f'Gripper Orient: {gripper_orient}')
             else:
-                #add service call to receive cubes and choose one for further usage
-                pass
+                position_point = responsePC.position[i]
+                cube_pos = [position_point.x, position_point.y, position_point.z]
+                rotation_point = responsePC.orientation[i]
+                cube_orient = [rotation_point.x, rotation_point.y, rotation_point.z]
+                cube_z_orient = cube_orient[2]
+
+                
+
+            cube_pos[2] = 0.0225 - self.desk_h 
+            cube_yaw = (cube_z_orient + 2*math.pi) % (math.pi/2)
+            print("HEEEEY here is the apperent position and rotations: ", cube_pos, cube_orient)
+            if cube_yaw >= math.pi / 4:
+                opposit_rot = math.pi/2 - cube_yaw
+                gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, -opposit_rot])).tolist()
+            else:
+                gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, cube_yaw])).tolist()
+            print(f'Gripper Orient: {gripper_orient}')
             
 
             req = PickNPlaceRequest()
@@ -130,6 +158,9 @@ class CubeTowerNode:
             req.orientation = Point(*self.default_orient)
             req.task = 'place'
             response = self.pick_n_place_client(req)
+
+            req = HomingRequest()
+            response = self.homing_client(req)
 
 
 if __name__ == '__main__':

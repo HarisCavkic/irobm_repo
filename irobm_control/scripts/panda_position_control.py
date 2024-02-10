@@ -14,6 +14,7 @@ from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Point
 from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse, ArcPath, ArcPathResponse
+from irobm_control.srv import Homing, HomingResponse
 from copy import deepcopy
 
 class PandaMoveNode:
@@ -43,11 +44,20 @@ class PandaMoveNode:
             self.desk_h = np.array([0.0, 0.0, 0.0])
 
         self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
+        self.homing_configuration = [-0.003883130299572653, -0.18531659259774813, 0.0034981294616078205, -2.1012125574986595, 0.00035676014991842123, 1.913004710985454, 0.7990935928072485]
 
         self.move_to = rospy.Service('/irobm_control/move_to', MoveTo, self.move_to_handler)
         self.basic_traj = rospy.Service('/irobm_control/basic_traj', BasicTraj, self.basic_traj_handler)
         self.arc_path_srv = rospy.Service('/irobm_control/arc_path', ArcPath, self.arc_path_handler)
+        self.homing = rospy.Service('irobm_control/homing', Homing, self.home_handler)
 
+    
+    def home_handler(self, req):
+        print("Going HOME")
+        self.move_panda_to_joint_position(self.homing_configuration)
+        response = HomingResponse()
+        response.success = True
+        return response
 
     def move_to_handler(self, req):
         pos_np = np.array([req.position.x, req.position.y, req.position.z])
@@ -246,6 +256,7 @@ class PandaMoveNode:
             waypoints.append(deepcopy(pose))
         plan, fraction = self.group.compute_cartesian_path(waypoints, 0.01, 0)
         self.group.execute(plan)
+        rospy.sleep(2)
         pass
 
     def grasp_position_generation(self, pose_of_cube:geometry_msgs.msg.Pose):

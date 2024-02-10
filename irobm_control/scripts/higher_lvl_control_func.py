@@ -72,7 +72,7 @@ class HigherLvLControlNode:
 
         pick_pos_np = pos_np + self.gripper_offset
         print(f'Pick Pose: {pick_pos_np}')
-        place_pos_np = pick_pos_np + np.array([0.0, 0.0, 0.01])
+        place_pos_np = pick_pos_np + np.array([0.0, 0.0, 0.005])
         print(f'Place Pose: {place_pos_np}')
         print(f'Orient: {orient}')
 

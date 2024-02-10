@@ -7,9 +7,11 @@
     
 
    <!-- Include Franka Control Launch File -->
-    <include file="$(find irobm_control)/launch/irobm_control.launch" pass_all_args="true"/>
+    <include file="$(find irobm_control)/launch/irobm_control.launch" pass_all_args="true">
+        <arg name="is_sim_arc" value="false"/>
+    </include>  
 
     <!-- Include Point Cloud Handler and camera -->
-      <include file="$(find irobm_perception)/launch/pc_handler.launch" pass_all_args="true"/>
+      <include file="$(find irobm_perception)/launch/pc_handler.launch"/>
 
 </launch>

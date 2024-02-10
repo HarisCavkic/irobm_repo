@@ -33,7 +33,7 @@ class PandaGripperNode:
         self.open_gripper_service = rospy.Service('/irobm_control/open_gripper', OpenGripper, self.open_gripper_handler)
         self.close_gripper_service = rospy.Service('/irobm_control/close_gripper', CloseGripper, self.close_gripper_handler)
         self.set_gripper_width = rospy.Service('/irobm_control/set_gripper_width', SetGripperWidth, self.set_gripper_width_handler)
-        self.grasp_handler = rospy.Service('irobm_control/grasp_obj', Grasp, self.grasp_handler)
+        self.grasp_handler_act = rospy.Service('irobm_control/grasp_obj', Grasp, self.grasp_handler)
 
 
     def open_gripper_handler(self, req):

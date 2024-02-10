@@ -3,7 +3,7 @@ from pathlib import Path
 import copy
 import math
 
-from sensor_msgs.msg import PointCloud2, PointField
+from sensor_msgs.msg import PointCloud2
 import numpy as np
 import open3d as o3d
 from sensor_msgs import point_cloud2
@@ -12,15 +12,15 @@ from tf2_sensor_msgs.tf2_sensor_msgs import do_transform_cloud
 import tf2_ros
 import matplotlib.pyplot as plt
 from geometry_msgs.msg import Point
-from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, MoveToRequest, BasicTrajResponse
+from irobm_control.srv import MoveTo, MoveToRequest
 import tf.transformations as tf_trans
 
 from irobm_perception.srv import CubeCentroids, CubeCentroidsResponse
-
+from irobm_control.srv import PickNPlace, PickNPlaceRequest, ArcPath, ArcPathRequest, Homing, HomingRequest
 
 DATA_PATH = Path(__file__).parent.parent / "data"
 
-TEST = True
+TEST = False
 
 class PCHandler():
     """
@@ -32,14 +32,15 @@ class PCHandler():
     def __init__(self, pc_topic):
         rospy.init_node('decision_maker')
         self.sub = rospy.Subscriber(pc_topic, PointCloud2, self.callback)
-        self.service = rospy.ServiceProxy('/move_to', MoveTo)
+        self.service = rospy.ServiceProxy('/irobm_control/move_to', MoveTo)
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         rospy.on_shutdown(self.shutdown_procedure)
-        self.home_position = [0, .5, 0.5, [3.1415, 0, -0.8], True]
-        self.positions = [[0, .5, 0.5, [3.1415, 0, -0.8], True],
-                          #[-.22, .4, .4, [3.1415, -0.4, 1], True],
-                          #[.4, .5, 0.45, [3.1415, -0.7, -math.pi/2 - 0.15], True]
+        self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
+        self.home_position = [.5, 0,  0.5, [3.1415, 0, -0.8], True]
+        self.positions = [[.5, 0, 0.5, [3.1415, 0, -0.8], True],
+                          #[.4,-.22, .4, [3.1415, -0.4, 1], True],
+                          #[.5,.4, 0.45, [3.1415, -0.7, -math.pi/2 - 0.15], True]
                           ]
 
         self.current_cloud = None
@@ -49,7 +50,7 @@ class PCHandler():
         self.save_signal = False
 
         self.move_to = rospy.Service('/irobm_perception/cube_centroids', CubeCentroids, self.point_cloud_handle)
-
+        self.homing_client = rospy.ServiceProxy('/irobm_control/homing', Homing)
         # initial setup
         #self.check_service_and_process_positions(visualize=False)
         # todo: need current positions of the robot to calculate the offset to the objects
@@ -95,11 +96,10 @@ class PCHandler():
 
         return response
 
-
-
-
     def check_service_and_process_positions(self, visualize=False):
-        rospy.wait_for_service('/move_to')
+        print("Waiting for service move to")
+        rospy.wait_for_service('/irobm_control/move_to')
+        print("Move to online")
         for position in self.positions:
             # todo undo
             self.move_to_position_and_wait(position)
@@ -112,7 +112,6 @@ class PCHandler():
 
     def move_to_position_and_wait(self, position):
         # Make sure to define the MoveTo service message format
-        rospy.wait_for_service('/move_to')
         print("Moving to position: ", position)
         x, y, z, orientation, use_orientation = position
         try:
@@ -293,7 +292,7 @@ class PCHandler():
         for i in range(0, max_labels + 1):
             indices_to_extract = np.where(labels == i)
             print("LABEL: ", i, "NR points: ", len(indices_to_extract[0]))
-            if len(indices_to_extract[0]) < 500:
+            if len(indices_to_extract[0]) < 1000:
                 # cant be cube must be outliers
                 continue
             # Extract points based on indices
