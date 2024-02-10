@@ -46,6 +46,7 @@ class PCHandler():
         print("Removing outliers")
         # remove outliers, i.e., do filtering
         self.remove_outliers(visualize)
+
         # estimate the normals
         print("estimate the normals")
         self.estimate_normals(visualize)
@@ -54,10 +55,14 @@ class PCHandler():
         print("RANSAC")
         self.run_RANSAC_plane(visualize)
 
-        #another remove outliers
+        print("Removing outliers")
+        # remove outliers, i.e., do filtering
+        self.remove_outliers(visualize, nb_neighbors=50, std_ratio=5)
+
         # db scan rest of the cloud, i.e., segment the cubes
         print("DB SCAN")
         segmented_cubes = self.do_dbscan(visualize)
+        print(f"Found {len(segmented_cubes)} cubes")
 
         self.transformations = self.get_transformations(segmented_cubes, True)
         print(self.transformations)
@@ -71,21 +76,27 @@ class PCHandler():
         coord_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
         for i in range(self.transform_index):
             try:
-                pc = np.load(str(DATA_PATH / f'point_cloud_transformed_raw{i}.npy'))
+                pc = np.load(str(DATA_PATH / f'point_cloud_transformed{i}.npy'))
                 #mask = np.where(pc[:, 2] > -.7, True, False)
                 #mask = np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3)))
                 #pc = pc[mask]
                 pcds.append(o3d.geometry.PointCloud())
                 pcds[nr_loaded_clouds].points = o3d.utility.Vector3dVector(pc)
                 pcds[nr_loaded_clouds].paint_uniform_color([0, 1, 0.6])
-                o3d.visualization.draw_geometries([pcds[nr_loaded_clouds], coord_axes], zoom=0.3412,
-                                  front=[-1, 0, 0],
-                                  lookat=[0, 1, 0],
-                                  up=[0., 0, 1])
                 nr_loaded_clouds += 1
             except Exception as exc:
                 print(f"Something went wront when loading the pointcloud number {i}")
                 print(exc)
+
+
+        for cloud, clr in zip(pcds, [[1,0,0], [0,1,0], [0,0,1]]):
+
+            cloud.paint_uniform_color(clr)
+
+        o3d.visualization.draw_geometries(pcds, zoom=0.3412,
+                                          front=[-1, 0, 0],
+                                          lookat=[0, 1, 0],
+                                          up=[0., 0, 1])
 
         pcd_combined = o3d.geometry.PointCloud()
         for point_id in range(len(pcds)):
@@ -97,11 +108,11 @@ class PCHandler():
             o3d.visualization.draw_geometries([pcd_combined_down, coord_axes])  # todo check weather 1.3 is good or should be lower
         return pcd_combined_down
 
-    def remove_outliers(self, visualize=False):
+    def remove_outliers(self, visualize=False, nb_neighbors=16, std_ratio=5):
         """
             remove outliers, i.e., do filtering
         """
-        filtered_pcd = self.combined_pcd.remove_statistical_outlier(nb_neighbors=16, std_ratio=5)
+        filtered_pcd = self.combined_pcd.remove_statistical_outlier(nb_neighbors=nb_neighbors, std_ratio=std_ratio)
         final_cloud = filtered_pcd[0]
         if visualize:
             outliers = self.combined_pcd.select_by_index(filtered_pcd[1], invert=True)
@@ -141,10 +152,10 @@ class PCHandler():
         segmented_cubes = list()
         cubes_points_ndarray = np.asarray(self.combined_pcd.points)
         for i in range(0, max_labels + 1):
-            print("LABEL: ", i)
             indices_to_extract = np.where(labels == i)
-            if len(indices_to_extract[0]) < 100:
-                #cant be cube must be outliers
+            print("LABEL: ", i, "NR points: ", len(indices_to_extract[0]))
+            if len(indices_to_extract[0]) < 500:
+                # cant be cube must be outliers
                 continue
             # Extract points based on indices
             segment = cubes_points_ndarray[indices_to_extract]
@@ -154,6 +165,7 @@ class PCHandler():
             selected_cloud.points = o3d.utility.Vector3dVector(segment)
             segmented_cubes.append(selected_cloud)
 
+        max_labels = len(segmented_cubes)
         if visualize:
             colors = plt.get_cmap("tab10")(labels / max_labels if max_labels > 0 else 1)
             colors[labels < 0] = 0

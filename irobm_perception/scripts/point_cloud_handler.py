@@ -174,6 +174,7 @@ class PCHandler():
         print("DB SCAN")
         segmented_cubes = self.do_dbscan(True)
         print(f"Found {len(segmented_cubes)} cubes")
+
         self.transformations = self.get_transformations(segmented_cubes, visualize)
 
         print("Trying to go to approximated positions")
@@ -222,7 +223,7 @@ class PCHandler():
             o3d.visualization.draw_geometries([pcd_combined_down])  # todo check weather 1.3 is good or should be lower
         return pcd_combined_down
 
-    def remove_outliers(self, visualize=False, nb_neighbors=16, std_ratio=2):
+    def remove_outliers(self, visualize=False, nb_neighbors=16, std_ratio=5):
         """
             remove outliers, i.e., do filtering
         """
@@ -281,9 +282,6 @@ class PCHandler():
             segmented_cubes.append(selected_cloud)
 
         max_labels = len(segmented_cubes)
-        if max_labels >6:
-            print("TOO MUCH")
-            exit()
         if visualize:
             colors = plt.get_cmap("tab10")(labels / max_labels if max_labels > 0 else 1)
             colors[labels < 0] = 0
