@@ -18,27 +18,27 @@ from irobm_control.srv import PickNPlace, PickNPlaceResponse
 
 class HigherLvLControlNode:
     def __init__(self):
-        rospy.init_node('higher_lvl_control_node', log_level=rospy.DEBUG)
-
-        self.is_simulation = True
+        self.is_simulation = rospy.get_param('is_sim', True)
 
         # height of the desk in the simulation
 
         if self.is_simulation:
             # Initialize Gazebo service and relevant parameters
+            print('Higher lvl control is in sim')
             self.set_model_state_service = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
             self.get_model_state_service = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
             self.desk_h = np.array([0.0, 0.0, 0.787])
         else:
+            print('Higher lvl control is in real')
             self.desk_h = np.array([0.0, 0.0, 0.0])
 
         self.cube_dim = 0.045
         self.default_force = 20.0
         # maybe tweak offset a bit more
-        self.gripper_offset = np.array([0.0, 0.0, 0.12])
+        self.gripper_offset = np.array([0.0, 0.0, 0.11])
 
         # Service Servers
-        self.pick_n_place = rospy.Service('/irobm_control/pick_n_place', PickNPlace, self.pick_n_place_handler)
+        self.pick_n_place_srv = rospy.Service('/irobm_control/pick_n_place', PickNPlace, self.pick_n_place_handler)
 
         # Service Clients
         self.move_to_client = rospy.ServiceProxy('/irobm_control/move_to', MoveTo)
@@ -52,28 +52,33 @@ class HigherLvLControlNode:
         orient = [req.orientation.x, req.orientation.y, req.orientation.z]
         task = req.task
 
-        response = self.pick_n_place(pos, orient, task)
+        response = PickNPlaceResponse()
+        response.success = self.pick_n_place(pos, orient, task)
 
         return response
 
 
 
     def pick_n_place(self, pos, orient, task):
-        init_dist = np.array([0.0, 0.0, 0.2])
+        init_dist = np.array([0.0, 0.0, 0.15])
 
         pos_np = np.array(pos)
         orient_np = np.array(orient)
 
-        init_pos= (pos_np + self.desk_h + self.gripper_offset + init_dist).tolist()
+        init_pos= (pos_np + self.gripper_offset + init_dist).tolist()
+        print(f'Init Pose: {init_pos}')
 
-        pick_pos_np = pos_np + self.desk_h + self.gripper_offset
-        place_pos_np = pick_pos_np - np.array([0.0, 0.0, 0.002])
+        pick_pos_np = pos_np + self.gripper_offset
+        print(f'Pick Pose: {pick_pos_np}')
+        place_pos_np = pick_pos_np + np.array([0.0, 0.0, 0.01])
+        print(f'Place Pose: {place_pos_np}')
+        print(f'Orient: {orient}')
 
         pick_pos = pick_pos_np.tolist()
         place_pos = place_pos_np.tolist()
 
         req = MoveToRequest()
-        req.position = init_pos
+        req.position = Point(*init_pos)
         req.orientation = orient
         req.w_orient = True
         response = self.move_to_client(req)
@@ -83,8 +88,9 @@ class HigherLvLControlNode:
             response = self.open_gripper_client(req)
 
             req = MoveToRequest()
-            req.position = pick_pos
+            req.position = Point(*pick_pos)
             req.orientation = orient
+            req.w_orient = True
             response = self.move_to_client(req)
 
             req = GraspRequest()
@@ -93,15 +99,16 @@ class HigherLvLControlNode:
             response = self.grasp_client(req)
         elif task == 'place':
             req = MoveToRequest()
-            req.position = place_pos
+            req.position = Point(*place_pos)
             req.orientation = orient
+            req.w_orient = True
             response = self.move_to_client(req)
 
             req = OpenGripperRequest()
             response = self.open_gripper_client(req)
 
         req = MoveToRequest()
-        req.position = init_pos
+        req.position = Point(*init_pos)
         req.orientation = orient
         req.w_orient = True
         response = self.move_to_client(req)

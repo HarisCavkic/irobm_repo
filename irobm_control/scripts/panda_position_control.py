@@ -31,9 +31,11 @@ class PandaMoveNode:
 
         if self.is_simulation:
             # Initialize Gazebo service
+            print('Position Control in sim')
             self.set_model_state_service = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
             self.desk_h = np.array([0.0, 0.0, 0.787])
         else:
+            print('Position Control in real')
             self.desk_h = np.array([0.0, 0.0, 0.0])
        
 

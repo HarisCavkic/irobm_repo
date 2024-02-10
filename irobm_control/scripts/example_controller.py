@@ -25,10 +25,12 @@ class ExampleControllerNode:
 
         if self.is_simulation:
             # Initialize Gazebo service and relevant parameters
+            print('Example Controller is in sim')
             self.set_model_state_service = rospy.ServiceProxy('/gazebo/set_model_state', SetModelState)
             self.get_model_state_service = rospy.ServiceProxy('/gazebo/get_model_state', GetModelState)
             self.desk_h = np.array([0.0, 0.0, 0.787])
         else:
+            print('Example Controller is in real')
             self.desk_h = np.array([0.0, 0.0, 0.0])
 
         self.move_to_client = rospy.ServiceProxy('/irobm_control/move_to', MoveTo)

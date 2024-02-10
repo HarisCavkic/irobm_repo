@@ -2,10 +2,11 @@
     <arg name="pkg" default="irobm_control" />
     <arg name="is_sim_arg" default="false" />
 
-
-    <node name="panda_move_node" pkg="$(arg pkg)" type="panda_position_control.py" respawn="true" output="screen">
     <param name="is_sim" value="$(arg is_sim_arg)" />
-    </node>
+
+    <node name="panda_move_node" pkg="$(arg pkg)" type="panda_position_control.py" respawn="true" output="screen"/>
 
     <node name="panda_gripper_node" pkg="$(arg pkg)" type="panda_gripper_control.py" respawn="true" output="screen"/>
+
+    <node name="higher_lvl_control_node" pkg="$(arg pkg)" type="higher_lvl_control_func.py" respawn="true" output="screen"/>
 </launch>
