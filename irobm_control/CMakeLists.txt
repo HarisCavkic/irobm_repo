@@ -12,15 +12,11 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
-  interactive_markers
-  moveit_core
-  moveit_ros_planning
-  moveit_ros_planning_interface
-  moveit_ros_perception
+  #moveit_core
+  #moveit_ros_planning
+  #moveit_ros_planning_interface
+  #moveit_ros_perception
   rosbag
-  tf2_ros
-  tf2_eigen
-  tf2_geometry_msgs
   geometry_msgs
   message_generation
   franka_gripper
@@ -132,10 +128,10 @@ catkin_package(
   roscpp rospy 
   std_msgs 
   franka_gripper
-  moveit_core
-  moveit_ros_planning_interface
-  interactive_markers
-  tf2_geometry_msgs
+  #moveit_core
+  #moveit_ros_planning_interface
+  #interactive_markers
+  #tf2_geometry_msgs
   message_runtime
 )
 
