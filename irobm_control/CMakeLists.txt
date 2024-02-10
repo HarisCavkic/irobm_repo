@@ -23,10 +23,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_geometry_msgs
   geometry_msgs
   message_generation
-<<<<<<< HEAD
-=======
   franka_gripper
->>>>>>> 386aa356852e7dba47f524bd1228a1d9b21ebde8
 )
 
 ## System dependencies are found with CMake's conventions
@@ -128,13 +125,10 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-<<<<<<< HEAD
  INCLUDE_DIRS include
  LIBRARIES irobm_control
-=======
  # INCLUDE_DIRS include
  # LIBRARIES irobm_control
->>>>>>> 386aa356852e7dba47f524bd1228a1d9b21ebde8
  CATKIN_DEPENDS 
   franka_zed_gazebo 
   roscpp rospy 
@@ -145,11 +139,8 @@ catkin_package(
   interactive_markers
   tf2_geometry_msgs
   message_runtime
-<<<<<<< HEAD
  DEPENDS 
   EIGEN3
-=======
->>>>>>> 386aa356852e7dba47f524bd1228a1d9b21ebde8
 )
 
 ###########
