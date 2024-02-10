@@ -276,17 +276,7 @@ if __name__ == '__main__':
     # rospy.init_node('panda_move_node', log_level=rospy.DEBUG) #node with log set to debug
     rospy.init_node('panda_move_node')
     position_class = PandaMoveNode()
-    pose = geometry_msgs.msg.Pose()
-    pose.position.x = 0.4
-    pose.position.y = 0
-    pose.position.z = 0.8095+0.2
-    pose.orientation = position_class.euler_to_quaternion(0,0,math.pi/6)
-    a = position_class.grasp_position_generation(pose)
-    position_class.group.set_pose_target(a['left'])
-    # position_class.move_panda_to_position([0.5, 0, 1.2], [2*math.pi/4, math.pi/2 + math.pi/6, -math.pi/4], 'rxyz')
-    
-    position_class.group.go()
-    # rospy.spin()
+    rospy.spin()
 
 
 
