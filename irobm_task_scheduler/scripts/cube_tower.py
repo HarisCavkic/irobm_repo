@@ -15,7 +15,7 @@ from geometry_msgs.msg import Point
 
 from irobm_control.srv import MoveTo, MoveToRequest, BasicTraj, BasicTrajRequest
 from irobm_control.srv import OpenGripper, OpenGripperRequest, CloseGripper, CloseGripperRequest, Grasp, GraspRequest
-from irobm_control.srv import PickNPlace, PickNPlaceRequest
+from irobm_control.srv import PickNPlace, PickNPlaceRequest, ArcPath, ArcPathRequest
 
 class CubeTowerNode:
     def __init__(self):
@@ -41,6 +41,7 @@ class CubeTowerNode:
         # Service Clients
         self.move_to_client = rospy.ServiceProxy('/irobm_control/move_to', MoveTo)
         self.basic_traj_client = rospy.ServiceProxy('/irobm_control/basic_traj', BasicTraj)
+        self.arc_path_client = rospy.ServiceProxy('/irobm_control/arc_path', ArcPath)
 
         self.open_gripper_client = rospy.ServiceProxy('/irobm_control/open_gripper', OpenGripper)
         self.grasp_client = rospy.ServiceProxy('/irobm_control/grasp_obj', Grasp)
@@ -86,7 +87,7 @@ class CubeTowerNode:
         # Convert angles from radians to degrees and return as a list
         return [roll, pitch, yaw]
     
-    def build_tower(self):
+    def build_tower(self):  
         cube_counter = self.num_of_cubes
 
         for i in range(cube_counter):

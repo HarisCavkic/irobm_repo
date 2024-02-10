@@ -13,7 +13,7 @@ import math
 from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Point
-from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse, arc_path, arc_pathResponse
+from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse, ArcPath, ArcPathResponse
 from copy import deepcopy
 
 class PandaMoveNode:
@@ -37,12 +37,12 @@ class PandaMoveNode:
         else:
             print('Position Control in real')
             self.desk_h = np.array([0.0, 0.0, 0.0])
-       
+
+        self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
 
         self.move_to = rospy.Service('/irobm_control/move_to', MoveTo, self.move_to_handler)
         self.basic_traj = rospy.Service('/irobm_control/basic_traj', BasicTraj, self.basic_traj_handler)
-        self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
-        self.arc_path_srv = rospy.Service('/arc_path', arc_path, self.arc_path_handler)
+        self.arc_path_srv = rospy.Service('/irobm_control/arc_path', ArcPath, self.arc_path_handler)
 
 
     def move_to_handler(self, req):
@@ -88,12 +88,12 @@ class PandaMoveNode:
 
         return response
     
-    def arc_path_handler(self, req:arc_path._request_class):
+    def arc_path_handler(self, req:ArcPath._request_class):
         if req.radius == 0 and req.times == 0:
             self.arc_path(req.center_of_circle)
         else:
             self.arc_path(req.center_of_circle, req.radius, req.times)
-        response = arc_pathResponse()
+        response = ArcPathResponse()
         response.success = True
         return response
         pass
