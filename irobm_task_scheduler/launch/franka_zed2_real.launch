@@ -12,6 +12,6 @@
     </include>  
 
     <!-- Include Point Cloud Handler and camera -->
-      <include file="$(find irobm_perception)/launch/pc_handler.launch"/>
+      <!-- <include file="$(find irobm_perception)/launch/pc_handler.launch"/>-->
 
 </launch>

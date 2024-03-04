@@ -39,32 +39,32 @@ class PCHandler():
     def do_cloud_preproc(self, visualize=False):
         print("Combined clouds")
         self.combined_pcd = self.combine_pointclouds(
-            visualise=visualize)  # visualize only for debugging otherwise its blocking
-             
+            visualise=True)  # visualize only for debugging otherwise its blocking
+
         self.combined_pcd.paint_uniform_color([0.6, .6, .6])
 
         print("Removing outliers")
         # remove outliers, i.e., do filtering
-        self.remove_outliers(visualize)
+        self.remove_outliers(visualize, nb_neighbors=10, std_ratio=0.5)
 
         # estimate the normals
         print("estimate the normals")
         self.estimate_normals(visualize)
 
         # RANSAC Planar Segmentation, i.e., remove the desk
-        print("RANSAC")
-        self.run_RANSAC_plane(visualize)
+        #print("RANSAC")
+        #self.run_RANSAC_plane(visualize)
 
-        print("Removing outliers")
+        #print("Removing outliers")
         # remove outliers, i.e., do filtering
-        self.remove_outliers(visualize, nb_neighbors=50, std_ratio=5)
+        #self.remove_outliers(visualize, nb_neighbors=50, std_ratio=3)
 
         # db scan rest of the cloud, i.e., segment the cubes
         print("DB SCAN")
-        segmented_cubes = self.do_dbscan(visualize)
+        segmented_cubes = self.do_dbscan(True)
         print(f"Found {len(segmented_cubes)} cubes")
 
-        self.transformations = self.get_transformations(segmented_cubes, True)
+        self.transformations = self.get_transformations(segmented_cubes, visualize)
         print(self.transformations)
 
     def combine_pointclouds(self,
@@ -74,7 +74,8 @@ class PCHandler():
         nr_loaded_clouds = 0  # if there is problem with loading one of the pcds we dont want index out of bounds
         # load the data
         coord_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
-        for i in range(self.transform_index):
+        indices_to_use = [0,1, 2]
+        for i in indices_to_use:
             try:
                 pc = np.load(str(DATA_PATH / f'point_cloud_transformed{i}.npy'))
                 #mask = np.where(pc[:, 2] > -.7, True, False)
@@ -93,7 +94,9 @@ class PCHandler():
 
             cloud.paint_uniform_color(clr)
 
-        o3d.visualization.draw_geometries(pcds, zoom=0.3412,
+        to_vis = [coord_axes]
+        to_vis.extend(pcds)
+        o3d.visualization.draw_geometries(to_vis, zoom=0.3412,
                                           front=[-1, 0, 0],
                                           lookat=[0, 1, 0],
                                           up=[0., 0, 1])
@@ -180,8 +183,13 @@ class PCHandler():
 
         for segment in segmented_cubes:
             # for safety create cube each time
-            cube_model = self.create_cube_model(0.046)
-            cube_model_cloud = cube_model.sample_points_uniformly(number_of_points=6000)  # mesh to pcd
+            cube_model = self.create_cube_model(0.04)
+            cube_model_cloud = cube_model.sample_points_uniformly(number_of_points=4000)  # mesh to pcd
+            cube_np_array = np.asarray(cube_model_cloud.points)
+            mask = np.where(cube_np_array[:, 1] < 0.015, True, False)
+            cube_array = cube_np_array[mask]
+            cube_model_cloud = o3d.geometry.PointCloud()
+            cube_model_cloud.points = o3d.utility.Vector3dVector(cube_array)
 
             initial_transformation = np.eye(4)
             initial_transformation[:3, 3] = segment.get_center()  # push near target cloud
@@ -222,7 +230,7 @@ class PCHandler():
         # only use 3 sides of the cube (not full cube is generated)
         # this is due to fact that the cubes in the scanned
         # point cloud are not full and often are lacking sides
-        #cube_mesh.remove_vertices_by_index([1])
+        cube_mesh.remove_vertices_by_index([1])
 
         # Translate the cube to center it at the origin
         # this is important for icp, as we want to get position and orientation relative to base

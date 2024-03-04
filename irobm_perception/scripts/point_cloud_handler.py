@@ -14,6 +14,9 @@ import matplotlib.pyplot as plt
 from geometry_msgs.msg import Point
 from irobm_control.srv import MoveTo, MoveToRequest
 import tf.transformations as tf_trans
+import pyzed.sl as sl
+from dynamic_reconfigure.client import Client
+        
 
 from irobm_perception.srv import CubeCentroids, CubeCentroidsResponse
 from irobm_control.srv import PickNPlace, PickNPlaceRequest, ArcPath, ArcPathRequest, Homing, HomingRequest
@@ -39,8 +42,11 @@ class PCHandler():
         self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
         self.home_position = [.5, 0,  0.5, [3.1415, 0, -0.8], True]
         self.positions = [[.5, 0, 0.5, [3.1415, 0, -0.8], True],
-                          #[.4,-.22, .4, [3.1415, -0.4, 1], True],
-                          #[.5,.4, 0.45, [3.1415, -0.7, -math.pi/2 - 0.15], True]
+                        [.5, -0.1, 0.5, [3.1415, 0, .8], True],
+                        [.5, 0.1, 0.5, [3.1415, 0, -1.6], True],
+            #[.5,.4, 0.5, [3.1415, -0.7, -math.pi/2 - 0.15], True],
+                  #        [.5,-.4, .4, [3.1415, -0.4, 1], True],
+                          
                           ]
 
         self.current_cloud = None
@@ -48,11 +54,15 @@ class PCHandler():
         self.combined_pcd = None
         self.transformations = None
         self.save_signal = False
-
+        
         self.move_to = rospy.Service('/irobm_perception/cube_centroids', CubeCentroids, self.point_cloud_handle)
         self.homing_client = rospy.ServiceProxy('/irobm_control/homing', Homing)
+
+        self.reconfig_client = Client('zed2/zed_node', timeout=30)
+        self.reconfigured_clien = False
+        
         # initial setup
-        #self.check_service_and_process_positions(visualize=False)
+        #self.check_service_and_process_positions(visualize=True)
         # todo: need current positions of the robot to calculate the offset to the objects
 
     def shutdown_procedure(self):
@@ -60,6 +70,13 @@ class PCHandler():
 
     def callback(self, pc2_msg):
         # self.current_cloud = pc2_msg
+        if not self.reconfigured_clien:
+            self.reconfig_client.update_configuration({"auto_exposure_gain" : False})
+            self.reconfig_client.update_configuration({"gain" : 1})
+            self.reconfig_client.update_configuration({"exposure" : 50})
+            self.reconfig_client.update_configuration({"brightness" : 6})
+            self.reconfigured_clien = True
+
         if self.save_signal:
             try:
                 # print("Frame id: ", pc2_msg.header.frame_id)
@@ -103,6 +120,7 @@ class PCHandler():
         for position in self.positions:
             # todo undo
             self.move_to_position_and_wait(position)
+            #exit()
             # print("Should be there")
             rospy.sleep(1)
             self.save_signal = True
@@ -156,12 +174,12 @@ class PCHandler():
         mask2 = np.where(points_array[:, 0] < 0.82, True, False)
         mask3 = np.where(points_array[:, 1] < 0.4, True, False)
         mask4 = np.where(points_array[:, 1] > -0.4, True, False)
-        mask5 = np.where(points_array[:, 2] > 0.01, True, False)
-        mask6 = np.where(points_array[:, 2] < 0.08, True, False)
+        mask5 = np.where(points_array[:, 2] > 0.02, True, False)
+        mask6 = np.where(points_array[:, 2] < 0.15, True, False)
         mask = np.logical_and(mask6, 
                                 np.logical_and(mask5, 
                                                 np.logical_and(mask4, 
-                                                np.logical_and(mask3, 
+                                                np.logical_and(mask3,
                                                 np.logical_and(mask1, mask2)))))
         points_array = points_array[mask]
 
@@ -187,13 +205,13 @@ class PCHandler():
     def do_cloud_preproc(self, visualize=False):
         print("Combined clouds")
         self.combined_pcd = self.combine_pointclouds(
-            visualise=visualize)  # visualize only for debugging otherwise its blocking
+            visualise=True)  # visualize only for debugging otherwise its blocking
 
         self.combined_pcd.paint_uniform_color([0.6, .6, .6])
 
         print("Removing outliers")
         # remove outliers, i.e., do filtering
-        self.remove_outliers(visualize, nb_neighbors=10, std_ratio=3)
+        self.remove_outliers(visualize, nb_neighbors=10, std_ratio=1)
 
         # estimate the normals
         print("estimate the normals")
@@ -318,8 +336,15 @@ class PCHandler():
 
         for segment in segmented_cubes:
             # for safety create cube each time
-            cube_model = self.create_cube_model(0.045)
-            cube_model_cloud = cube_model.sample_points_uniformly(number_of_points=5000)  # mesh to pcd
+            cube_model = self.create_cube_model(0.04)
+            cube_model_cloud = cube_model.sample_points_uniformly(number_of_points=4000)  # mesh to pcd
+            cube_np_array = np.asarray(cube_model_cloud.points)
+            mask = np.where(cube_np_array[:, 1] < 0.015, True, False)
+            cube_array = cube_np_array[mask]
+            cube_model_cloud = o3d.geometry.PointCloud()
+            cube_model_cloud.points = o3d.utility.Vector3dVector(cube_array)
+
+
             initial_transformation = np.eye(4)
             initial_transformation[:3, 3] = segment.get_center()  # push near target cloud
             cube_model_cloud.transform(initial_transformation)
@@ -353,9 +378,8 @@ class PCHandler():
         open3d.geometry.TriangleMesh: The 3D model of the cube.
         """
         # Create a cube mesh
-        height = (side_length / 3) * 2
         cube_mesh = o3d.geometry.TriangleMesh.create_box(width=side_length,
-                                                         height=height,
+                                                         height=side_length,
                                                          depth=side_length)
 
         # only use 3 sides of the cube (not full cube is generated)

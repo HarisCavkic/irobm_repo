@@ -3,15 +3,15 @@
 ---
 
 # Dynamic parameters cannot have a namespace
-brightness:                     10                               # Dynamic
+brightness:                     7                               # Dynamic
 contrast:                       4                               # Dynamic
 hue:                            0                               # Dynamic
 saturation:                     4                               # Dynamic
 sharpness:                      4                               # Dynamic
 gamma:                          8                               # Dynamic - Requires SDK >=v3.1
-auto_exposure_gain:             true                            # Dynamic
-gain:                           100                             # Dynamic - works only if `auto_exposure_gain` is false
-exposure:                       100                             # Dynamic - works only if `auto_exposure_gain` is false
+auto_exposure_gain:             false                            # Dynamic
+gain:                           45                             # Dynamic - works only if `auto_exposure_gain` is false
+exposure:                       77                             # Dynamic - works only if `auto_exposure_gain` is false
 auto_whitebalance:              true                            # Dynamic
 whitebalance_temperature:       42                              # Dynamic - works only if `auto_whitebalance` is false
 depth_confidence:               50                              # Dynamic
@@ -45,7 +45,7 @@ depth:
     openni_depth_mode:          false                           # 'false': 32bit float meter units, 'true': 16bit uchar millimeter units
 
 pos_tracking:
-    pos_tracking_enabled:       true                            # True to enable positional tracking from start
+    pos_tracking_enabled:       false                            # True to enable positional tracking from start
     pos_tracking_mode:          'QUALITY'                      # Matches the ZED SDK setting: 'QUALITY', 'STANDARD' -> Use 'QUALITY' with 'ULTRA' depth mode for improved outdoors performance
     set_gravity_as_origin:      true                            # If 'true' align the positional tracking world to imu gravity measurement. Keep the yaw from the user initial pose.
     imu_fusion:                 true                            # enable/disable IMU fusion. When set to false, only the optical odometry will be used.
