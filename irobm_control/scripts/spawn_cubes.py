@@ -179,6 +179,6 @@ def spawn_cubes(num_cubes, start_position):
 
 if __name__ == "__main__":
     # Specify the number of cubes to spawn and the starting position
-    num_cubes_to_spawn = 7
+    num_cubes_to_spawn = 9
     starting_position = [0.5, 0, 0.84]
     spawn_cubes(num_cubes_to_spawn, starting_position)

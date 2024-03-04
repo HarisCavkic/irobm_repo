@@ -31,7 +31,7 @@ class PandaMoveNode:
         self.is_simulation = rospy.get_param('is_sim', True)
 
         # Set the maximum velocity scaling factor
-        self.group.set_max_velocity_scaling_factor(0.5)
+        self.group.set_max_velocity_scaling_factor(0.8)
 
         if self.is_simulation:
             # Initialize Gazebo service

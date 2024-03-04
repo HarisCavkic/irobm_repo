@@ -96,10 +96,8 @@ class PyramidNode:
 
 
     # creates a list of goal centroids for the pyramid with the right placing order
-    def pyramid_goal_centroids(self, height):
+    def pyramid_goal_centroids(self, center_pos, height):
         padding = 0.005 # value between cubes
-        cubes_per_layer = height
-        base_layer_width = height * self.cube_dim + (height-1) * padding
         
         dist_between_cubes = padding + self.cube_dim
         x_offset_odd = math.cos(math.pi/4) * dist_between_cubes
@@ -114,17 +112,28 @@ class PyramidNode:
             half_l_cubes = math.floor(i / 2)
             for j in range(i):
                 if i % 2 == 1:
-                    centroid = [self.pyramid_center_pos[0] + (-half_l_cubes + j) * x_offset_odd,
-                                self.pyramid_center_pos[1] + (-half_l_cubes + j) * y_offset_odd,
+                    centroid = [center_pos[0] + (-half_l_cubes + j) * x_offset_odd,
+                                center_pos[1] + (-half_l_cubes + j) * y_offset_odd,
                                 z_coord]
                     centroid_list.append(centroid)
                 else:
                     if j == 0:
-                        edge_centroid = [self.pyramid_center_pos[0] + x_offset_even * -1 + x_offset_odd * -(half_l_cubes - 1),
-                                         self.pyramid_center_pos[1] + y_offset_even * -1 + y_offset_odd * -(half_l_cubes - 1)]
+                        edge_centroid = [center_pos[0] + x_offset_even * -1 + x_offset_odd * -(half_l_cubes - 1),
+                                         center_pos[1] + y_offset_even * -1 + y_offset_odd * -(half_l_cubes - 1)]
                     centroid = [edge_centroid[0] + x_offset_odd * j, edge_centroid[1] + y_offset_odd * j, z_coord]
                     centroid_list.append(centroid)
             z_coord = z_coord + self.cube_dim
+
+        return centroid_list
+    
+    # Builds a tower a the given center position with the given number of cubes:
+    # center_pos: The position of the first cube for the tower
+    # num_cubes: The number of cubes that shall be in the tower
+    def tower_goal_centroids(self, center_pos, num_cubes):
+        centroid_list = []
+        for i in range(num_cubes):
+            centroid = [center_pos[0], center_pos[1], center_pos[2] + self.cube_dim * i]
+            centroid_list.append(centroid)
 
         return centroid_list
                     
@@ -157,15 +166,23 @@ class PyramidNode:
         perp_orient = [self.default_orient[0], self.default_orient[1],
                        self.default_orient[2] - math.pi/2 + math.atan2(self.pyramid_center_pos[1], self.pyramid_center_pos[0])]
 
-        cube_centroids = self.pyramid_goal_centroids(3)
-        print(cube_centroids)
+        pyramid_height = 3
+        goal_cube_centroids = self.pyramid_goal_centroids(self.pyramid_center_pos, pyramid_height)
+        tower_pos = [self.pyramid_center_pos[0], self.pyramid_center_pos[1], 0.0225 + self.cube_dim * pyramid_height]
+        goal_cube_centroids.extend(self.tower_goal_centroids(tower_pos, 2))
+        print(goal_cube_centroids)
+        remaining_cubes = goal_cube_centroids.copy()
 
-        for i in range(cube_counter):
+        structure_size = len(goal_cube_centroids)
+        print(f'The structure needs {structure_size} cubes')
+        i = 0
+        while len(remaining_cubes) > 0:
+            print(f'{len(remaining_cubes)} are missing in the structure')
             if self.is_simulation:
                 cube_name = 'cube_' + str(i)
                 cube_pos, cube_orient = self.extract_model_state(cube_name)
                 cube_z_orient = cube_orient[0] 
-                
+                i = i + 1
 
             else:
                 position_point = responsePC.position[i]
@@ -192,17 +209,21 @@ class PyramidNode:
             req.orientation = Point(*gripper_orient)
             req.task = 'pick'
             response = self.pick_n_place_client(req)
+            if not response:
+                continue
             
             req = PickNPlaceRequest()
-            req.cube_centroid = Point(*cube_centroids[0])
+            req.cube_centroid = Point(*remaining_cubes[0])
             req.orientation = Point(*perp_orient)
             req.task = 'place'
             response = self.pick_n_place_client(req)
+            if not response:
+                continue
 
             req = HomingRequest()
             response = self.homing_client(req)
 
-            del cube_centroids[0]
+            del goal_cube_centroids[0]
 
 
 if __name__ == '__main__':
