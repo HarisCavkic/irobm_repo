@@ -4,14 +4,19 @@ import rospy
 import actionlib
 from control_msgs.msg import GripperCommandAction, GripperCommandGoal
 from franka_gripper.msg import GraspAction, GraspGoal
+from sensor_msgs.msg import JointState
 from irobm_control.srv import CloseGripper, CloseGripperResponse, OpenGripper, OpenGripperResponse
 from irobm_control.srv import SetGripperWidth, SetGripperWidthResponse, Grasp, GraspResponse
+from irobm_control.srv import GripperWidth, GripperWidthResponse
 
 class PandaGripperNode:
     def __init__(self):
 
         # Determine if the environment is Gazebo or real robot
         self.is_gazebo = rospy.get_param('/use_sim_time', False)
+
+        self.curr_pos = 0.0
+        self.curr_velocity = 0.0
 
         # Connect to the gripper action server
         if self.is_gazebo:
@@ -30,11 +35,25 @@ class PandaGripperNode:
         t_out = self.gripper_client.wait_for_server()
         g_out = self.grasp_client.wait_for_server()
 
+        rospy.Subscriber('/franka_gripper/joint_states', JointState, self.curr_pos_callback)
+
         self.open_gripper_service = rospy.Service('/irobm_control/open_gripper', OpenGripper, self.open_gripper_handler)
         self.close_gripper_service = rospy.Service('/irobm_control/close_gripper', CloseGripper, self.close_gripper_handler)
         self.set_gripper_width = rospy.Service('/irobm_control/set_gripper_width', SetGripperWidth, self.set_gripper_width_handler)
         self.grasp_handler_act = rospy.Service('irobm_control/grasp_obj', Grasp, self.grasp_handler)
+        self.gripper_state_service = rospy.Service('/irobm_control/gripper_state', GripperWidth, self.gripper_state_handler)
 
+
+    def curr_pos_callback(self, data):
+        self.curr_pos = data.position[0] + data.position[1]
+        self.curr_velocity = data.velocity[0] + data.velocity[1]
+        # print(f'Positions width is {data.position}')
+
+    def gripper_state_handler(self, req):
+        res = GripperWidthResponse()
+        res.width = self.curr_pos
+        res.velocity = self.curr_velocity
+        return res
 
     def open_gripper_handler(self, req):
         # Position for the fully opened gripper is 0.04(0.04 in both directions, so fully open it is 0.08)

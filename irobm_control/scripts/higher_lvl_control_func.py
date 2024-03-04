@@ -1,20 +1,16 @@
 #!/usr/bin/env python3
 
 import rospy
-import sys
-import tf
-import moveit_msgs.msg
-import geometry_msgs.msg
-import math
 import numpy as np
-from gazebo_msgs.srv import GetModelState, GetModelStateRequest
-from gazebo_msgs.msg import ModelState
+import math
+from gazebo_msgs.srv import GetModelState
 from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Point
 
-from irobm_control.srv import MoveTo, MoveToRequest, BasicTraj, BasicTrajRequest
-from irobm_control.srv import OpenGripper, OpenGripperRequest, CloseGripper, CloseGripperRequest, Grasp, GraspRequest
+from irobm_control.srv import MoveTo, MoveToRequest, BasicTraj
+from irobm_control.srv import OpenGripper, OpenGripperRequest, Grasp, GraspRequest
 from irobm_control.srv import PickNPlace, PickNPlaceResponse
+from irobm_control.srv import GripperWidth, GripperWidthRequest
 
 class HigherLvLControlNode:
     def __init__(self):
@@ -48,6 +44,7 @@ class HigherLvLControlNode:
 
         self.open_gripper_client = rospy.ServiceProxy('/irobm_control/open_gripper', OpenGripper)
         self.grasp_client = rospy.ServiceProxy('/irobm_control/grasp_obj', Grasp)
+        self.gripper_status_client = rospy.ServiceProxy('/irobm_control/gripper_state', GripperWidth)
 
     def pick_n_place_handler(self, req):
         pos = [req.cube_centroid.x, req.cube_centroid.y, req.cube_centroid.z]
@@ -99,12 +96,28 @@ class HigherLvLControlNode:
             req.width = self.cube_dim / 4
             req.force = 20.0
             response = self.grasp_client(req)
+
+            req = GripperWidthRequest()
+            response = self.gripper_status_client(req)
+            if response.width <= 0.025:
+                return False
+
         elif task == 'place':
+            req = GripperWidthRequest()
+            response = self.gripper_status_client(req)
+            if response.width <= 0.025:
+                return False
+
             req = MoveToRequest()
             req.position = Point(*place_pos)
             req.orientation = orient
             req.w_orient = True
             response = self.move_to_client(req)
+
+            req = GripperWidthRequest()
+            response = self.gripper_status_client(req)
+            if response.width <= 0.025:
+                return False
 
             req = OpenGripperRequest()
             response = self.open_gripper_client(req)

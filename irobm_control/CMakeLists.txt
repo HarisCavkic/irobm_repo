@@ -72,6 +72,7 @@ add_service_files(
   PickNPlace.srv
   ArcPath.srv
   Homing.srv
+  GripperWidth.srv
 )
 
 ## Generate actions in the 'action' folder
