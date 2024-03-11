@@ -16,7 +16,7 @@ from irobm_control.srv import MoveTo, MoveToRequest
 import tf.transformations as tf_trans
 import pyzed.sl as sl
 from dynamic_reconfigure.client import Client
-        
+from sklearn.cluster import KMeans
 
 from irobm_perception.srv import CubeCentroids, CubeCentroidsResponse
 from irobm_control.srv import PickNPlace, PickNPlaceRequest, ArcPath, ArcPathRequest, Homing, HomingRequest
@@ -301,7 +301,6 @@ class PCHandler():
         self.combined_pcd = cubes_cloud
 
     def do_dbscan(self, visualize=False):
-        # todo remove small clouds
         labels = np.array(self.combined_pcd.cluster_dbscan(eps=0.005, min_points=5))
         max_labels = labels.max()
 
@@ -310,16 +309,49 @@ class PCHandler():
         for i in range(0, max_labels + 1):
             indices_to_extract = np.where(labels == i)
             print("LABEL: ", i, "NR points: ", len(indices_to_extract[0]))
-            if len(indices_to_extract[0]) < 1000:
+            if len(indices_to_extract[0]) < 500:
                 # cant be cube must be outliers
                 continue
             # Extract points based on indices
             segment = cubes_points_ndarray[indices_to_extract]
 
-            # Create a new PointCloud from the selected points
-            selected_cloud = o3d.geometry.PointCloud()
-            selected_cloud.points = o3d.utility.Vector3dVector(segment)
-            segmented_cubes.append(selected_cloud)
+            if np.mean(segment[:, 2]) > 0.06:  # todo check is it good
+                print("Got stacked cubes")
+                middle_point_z = 0.055
+                indices_to_extract = np.where(segment[:, 2] > middle_point_z)
+                indices_to_extract_bottom = np.where(segment[:, 2] < middle_point_z)
+
+                segment_top = segment[indices_to_extract]
+                segment_bottom = segment[indices_to_extract_bottom]
+
+                selected_cloud = o3d.geometry.PointCloud()
+                selected_cloud.points = o3d.utility.Vector3dVector(segment_top)
+                segmented_cubes.append(selected_cloud)
+
+                selected_cloud2 = o3d.geometry.PointCloud()
+                selected_cloud2.points = o3d.utility.Vector3dVector(segment_bottom)
+                segmented_cubes.append(selected_cloud2)
+                if visualize:
+                    selected_cloud.paint_uniform_color([1, 0, 0])
+                    selected_cloud2.paint_uniform_color([0, 1, 0])
+                    o3d.visualization.draw_geometries([selected_cloud, selected_cloud2])
+
+
+            elif len(segment) > 4000:  # 8000
+                cloud1, cloud2 = self.doKMeans(segment)
+                segmented_cubes.append(cloud1)
+                segmented_cubes.append(cloud2)
+                if visualize:
+                    cloud1.paint_uniform_color([1, 0, 0])
+                    cloud2.paint_uniform_color([0, 1, 0])
+                    o3d.visualization.draw_geometries([cloud1, cloud2])
+
+            else:
+                # normal case
+                # Create a new PointCloud from the selected points
+                selected_cloud = o3d.geometry.PointCloud()
+                selected_cloud.points = o3d.utility.Vector3dVector(segment)
+                segmented_cubes.append(selected_cloud)
 
         max_labels = len(segmented_cubes)
         if visualize:
@@ -329,6 +361,25 @@ class PCHandler():
             o3d.visualization.draw_geometries([self.combined_pcd])
 
         return segmented_cubes
+
+    def doKMeans(self, point_cloud):
+        cloud = point_cloud.copy()
+        kmeans = KMeans(n_clusters=2)
+        kmeans.fit(cloud)
+
+        # Cluster labels for each point
+        labels = kmeans.labels_
+        cluster_0 = cloud[labels == 0]
+        cluster_1 = cloud[labels == 1]
+
+        selected_cloud = o3d.geometry.PointCloud()
+        selected_cloud.points = o3d.utility.Vector3dVector(cluster_0)
+
+        selected_cloud2 = o3d.geometry.PointCloud()
+        selected_cloud2.points = o3d.utility.Vector3dVector(cluster_1)
+
+        del kmeans
+        return selected_cloud, selected_cloud2
 
     def get_transformations(self, segmented_cubes, visualize=False):
         all_transformations = list()

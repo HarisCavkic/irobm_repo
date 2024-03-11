@@ -6,9 +6,9 @@ import numpy as np
 import open3d as o3d
 
 import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
 
-
-DATA_PATH = Path(__file__).parent.parent / "data"
+DATA_PATH = Path(__file__).parent.parent / "data/backup"
 
 
 class PCHandler():
@@ -24,7 +24,7 @@ class PCHandler():
         self.combined_pcd = None
         self.transformations = None
         # initial setup
-        self.check_service_and_process_positions(visualize = True)
+        self.check_service_and_process_positions(visualize=True)
         # todo: need current positions of the robot to calculate the offset to the objects
 
     def shutdown_procedure(self):
@@ -33,7 +33,7 @@ class PCHandler():
     def callback(self, pc2_msg):
         self.current_cloud = pc2_msg
 
-    def check_service_and_process_positions(self, visualize = False):
+    def check_service_and_process_positions(self, visualize=False):
         self.do_cloud_preproc(visualize)
 
     def do_cloud_preproc(self, visualize=False):
@@ -45,19 +45,19 @@ class PCHandler():
 
         print("Removing outliers")
         # remove outliers, i.e., do filtering
-        self.remove_outliers(visualize, nb_neighbors=10, std_ratio=0.5)
+        self.remove_outliers(visualize, nb_neighbors=10, std_ratio=2)
 
         # estimate the normals
         print("estimate the normals")
         self.estimate_normals(visualize)
 
         # RANSAC Planar Segmentation, i.e., remove the desk
-        #print("RANSAC")
-        #self.run_RANSAC_plane(visualize)
+        # print("RANSAC")
+        # self.run_RANSAC_plane(visualize)
 
-        #print("Removing outliers")
+        # print("Removing outliers")
         # remove outliers, i.e., do filtering
-        #self.remove_outliers(visualize, nb_neighbors=50, std_ratio=3)
+        # self.remove_outliers(visualize, nb_neighbors=50, std_ratio=3)
 
         # db scan rest of the cloud, i.e., segment the cubes
         print("DB SCAN")
@@ -74,13 +74,13 @@ class PCHandler():
         nr_loaded_clouds = 0  # if there is problem with loading one of the pcds we dont want index out of bounds
         # load the data
         coord_axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5, origin=[0, 0, 0])
-        indices_to_use = [0,1, 2]
+        indices_to_use = [0]
         for i in indices_to_use:
             try:
-                pc = np.load(str(DATA_PATH / f'point_cloud_transformed{i}.npy'))
-                #mask = np.where(pc[:, 2] > -.7, True, False)
-                #mask = np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3)))
-                #pc = pc[mask]
+                pc = np.load(str(DATA_PATH / f'point_cloud_transformed0{i}.npy'))
+                # mask = np.where(pc[:, 2] > -.7, True, False)
+                # mask = np.logical_and(mask4, np.logical_and(mask, np.logical_and(mask2, mask3)))
+                # pc = pc[mask]
                 pcds.append(o3d.geometry.PointCloud())
                 pcds[nr_loaded_clouds].points = o3d.utility.Vector3dVector(pc)
                 pcds[nr_loaded_clouds].paint_uniform_color([0, 1, 0.6])
@@ -89,9 +89,7 @@ class PCHandler():
                 print(f"Something went wront when loading the pointcloud number {i}")
                 print(exc)
 
-
-        for cloud, clr in zip(pcds, [[1,0,0], [0,1,0], [0,0,1]]):
-
+        for cloud, clr in zip(pcds, [[1, 0, 0], [0, 1, 0], [0, 0, 1]]):
             cloud.paint_uniform_color(clr)
 
         to_vis = [coord_axes]
@@ -108,7 +106,8 @@ class PCHandler():
 
         pcd_combined_down = pcd_combined.voxel_down_sample(voxel_size=voxel_size)
         if visualise:
-            o3d.visualization.draw_geometries([pcd_combined_down, coord_axes])  # todo check weather 1.3 is good or should be lower
+            o3d.visualization.draw_geometries(
+                [pcd_combined_down, coord_axes])  # todo check weather 1.3 is good or should be lower
         return pcd_combined_down
 
     def remove_outliers(self, visualize=False, nb_neighbors=16, std_ratio=5):
@@ -134,19 +133,19 @@ class PCHandler():
             self.combined_pcd.paint_uniform_color([0.6, .6, .6])
             o3d.visualization.draw_geometries([self.combined_pcd])
 
-    def run_RANSAC_plane(self, visualize=False):
-        pt_to_plane_dist = .01
-        plane_model, inliners = self.combined_pcd.segment_plane(distance_threshold=pt_to_plane_dist, ransac_n=5,
-                                                                num_iterations=100)
-        inlier_cloud = self.combined_pcd.select_by_index(inliners)
-        cubes_cloud = self.combined_pcd.select_by_index(inliners, invert=True)
+    def run_RANSAC_plane(self, pcd, visualize=False, pt_to_plane_dist=.01):
+
+        plane_model, inliners = pcd.segment_plane(distance_threshold=pt_to_plane_dist, ransac_n=5,
+                                                  num_iterations=100)
+        inlier_cloud = pcd.select_by_index(inliners)
+        cubes_cloud = pcd.select_by_index(inliners, invert=True)
 
         if visualize:
             inlier_cloud.paint_uniform_color([1., 0., 0.])
             cubes_cloud.paint_uniform_color([0.6, .6, .6])
             o3d.visualization.draw_geometries([cubes_cloud, inlier_cloud])
 
-        self.combined_pcd = cubes_cloud
+        return cubes_cloud, inlier_cloud
 
     def do_dbscan(self, visualize=False):
         labels = np.array(self.combined_pcd.cluster_dbscan(eps=0.005, min_points=5))
@@ -163,10 +162,43 @@ class PCHandler():
             # Extract points based on indices
             segment = cubes_points_ndarray[indices_to_extract]
 
-            # Create a new PointCloud from the selected points
-            selected_cloud = o3d.geometry.PointCloud()
-            selected_cloud.points = o3d.utility.Vector3dVector(segment)
-            segmented_cubes.append(selected_cloud)
+            if np.mean(segment[:, 2]) > 0.06: #todo check is it good
+                print("Got stacked cubes")
+                middle_point_z = 0.055
+                indices_to_extract = np.where(segment[:, 2] > middle_point_z)
+                indices_to_extract_bottom = np.where(segment[:, 2] < middle_point_z)
+
+                segment_top = segment[indices_to_extract]
+                segment_bottom = segment[indices_to_extract_bottom]
+
+                selected_cloud = o3d.geometry.PointCloud()
+                selected_cloud.points = o3d.utility.Vector3dVector(segment_top)
+                segmented_cubes.append(selected_cloud)
+
+                selected_cloud2 = o3d.geometry.PointCloud()
+                selected_cloud2.points = o3d.utility.Vector3dVector(segment_bottom)
+                segmented_cubes.append(selected_cloud2)
+                if visualize:
+                    selected_cloud.paint_uniform_color([1,0,0])
+                    selected_cloud2.paint_uniform_color([0,1,0])
+                    o3d.visualization.draw_geometries([selected_cloud, selected_cloud2])
+
+
+            elif len(segment) > 4000:  # 8000
+                cloud1, cloud2 = self.doKMeans(segment)
+                segmented_cubes.append(cloud1)
+                segmented_cubes.append(cloud2)
+                if visualize:
+                    cloud1.paint_uniform_color([1,0,0])
+                    cloud2.paint_uniform_color([0,1,0])
+                    o3d.visualization.draw_geometries([cloud1, cloud2])
+
+            else:
+                # normal case
+                # Create a new PointCloud from the selected points
+                selected_cloud = o3d.geometry.PointCloud()
+                selected_cloud.points = o3d.utility.Vector3dVector(segment)
+                segmented_cubes.append(selected_cloud)
 
         max_labels = len(segmented_cubes)
         if visualize:
@@ -176,6 +208,25 @@ class PCHandler():
             o3d.visualization.draw_geometries([self.combined_pcd])
 
         return segmented_cubes
+
+    def doKMeans(self, point_cloud):
+        cloud = point_cloud.copy()
+        kmeans = KMeans(n_clusters=2)
+        kmeans.fit(cloud)
+
+        # Cluster labels for each point
+        labels = kmeans.labels_
+        cluster_0 = cloud[labels == 0]
+        cluster_1 = cloud[labels == 1]
+
+        selected_cloud = o3d.geometry.PointCloud()
+        selected_cloud.points = o3d.utility.Vector3dVector(cluster_0)
+
+        selected_cloud2 = o3d.geometry.PointCloud()
+        selected_cloud2.points = o3d.utility.Vector3dVector(cluster_1)
+
+        del kmeans
+        return selected_cloud, selected_cloud2
 
     def get_transformations(self, segmented_cubes, visualize=False):
         all_transformations = list()
@@ -205,8 +256,9 @@ class PCHandler():
                 cube_model_cloud.transform(final_transformation)
                 cube_model_cloud.paint_uniform_color([1., 0., 0.])
                 segment.paint_uniform_color([0.6, .6, .6])
-                coord_axes2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=final_transformation[:3,3])
-                o3d.visualization.draw_geometries([coord_axes2,segment, cube_model_cloud, coord_axes])
+                coord_axes2 = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1,
+                                                                                origin=final_transformation[:3, 3])
+                o3d.visualization.draw_geometries([coord_axes2, segment, cube_model_cloud, coord_axes])
 
             all_transformations.append(final_transformation)
 
