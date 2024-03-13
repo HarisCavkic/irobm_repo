@@ -75,14 +75,33 @@ class PyramidNode:
                 rospy.loginfo(f"Model '{model_name}' - Position: {pos}, Orientation: {orient_rad}")
                 orient_deg = [math.degrees(angle) for angle in orient_rad]
                 print(f'Orientation Deg: {orient_deg}')
-                return pos, orient_rad
+                return pos, orient_rad, True
             else:
                 rospy.logwarn(f"Failed to get state for model '{model_name}'")
-                return None, None
+                return None, None, False
 
         except rospy.ServiceException as e:
             rospy.logerr(f"Service call failed: {str(e)}")
-            return None, None
+            return None, None, False
+        
+    # Takes the given model name(substring) and iterates over all names with the name inside + an iteration number
+    # Returns two lists of lists, for orientations and positions
+    def model_name_finder(self, model_name):
+        model_pos_l = []
+        model_orient_l = []
+        i = 0
+
+        while True:
+            model = 'cube' + '_' + str(i)
+            pos, orient, found = self.extract_model_state(model)
+            if not found: 
+                break
+            model_pos_l.append(pos)
+            model_orient_l.append(orient)
+            i = i + 1
+
+        return model_pos_l, model_orient_l
+     
         
     def quaternion_to_radians(self, quaternion):
         # Convert quaternion to rotation matrix
@@ -161,6 +180,8 @@ class PyramidNode:
             rospy.sleep(1)
             cube_counter = len(responsePC.position)
             print(f'Found Cubes: {cube_counter}')
+        else:
+            model_pos_l, model_orient_l = self.model_name_finder('cube')
         
         # perpendicular orientation towards the tower base
         perp_orient = [self.default_orient[0], self.default_orient[1],
@@ -179,10 +200,9 @@ class PyramidNode:
         while len(remaining_cubes) > 0:
             print(f'{len(remaining_cubes)} are missing in the structure')
             if self.is_simulation:
-                cube_name = 'cube_' + str(i)
-                cube_pos, cube_orient = self.extract_model_state(cube_name)
-                cube_z_orient = cube_orient[0] 
-                i = i + 1
+                cube_pos = model_pos_l[i]
+                cube_orient = model_orient_l[i]
+                cube_z_orient = (model_orient_l[i])[0]
 
             else:
                 position_point = responsePC.position[i]
@@ -196,6 +216,7 @@ class PyramidNode:
             cube_pos[2] = 0.0225
             cube_yaw = (cube_z_orient + 2*math.pi) % (math.pi/2)
             print("HEEEEY here is the apperent position and rotations: ", cube_pos, cube_orient)
+            print(f"Current goal position: {remaining_cubes[0]}")
             if cube_yaw >= math.pi / 4:
                 opposit_rot = math.pi/2 - cube_yaw
                 gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, -opposit_rot])).tolist()
@@ -223,7 +244,9 @@ class PyramidNode:
             req = HomingRequest()
             response = self.homing_client(req)
 
-            del goal_cube_centroids[0]
+            print("Placed Cube correctly")
+            del remaining_cubes[0]
+            i = i+1
 
 
 if __name__ == '__main__':
