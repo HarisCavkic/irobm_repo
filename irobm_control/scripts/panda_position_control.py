@@ -260,6 +260,29 @@ class PandaMoveNode:
         pose.orientation = self.euler_to_quaternion(*n_euler_angle)
         grasp_positions_dict.update({'tops':deepcopy(pose)})
         pose.position.z = pose_of_cube.position.z
+        theta = [euler_angle[2] + i*math.pi/2 for i in range(-2, 1)]
+        orien_list = ['right', 'front', 'left']
+        for i in range(len(theta)):
+            n_euler_angle = [euler_angle[0] + math.pi/2, euler_angle[1]+theta[i], - math.pi/4]
+            pose.orientation = self.euler_to_quaternion(*n_euler_angle, 'rxyz')
+            pose.position.x = pose_of_cube.position.x + 0.115*math.cos(theta[i])
+            pose.position.y = pose_of_cube.position.y + 0.115*math.sin(theta[i])
+            grasp_positions_dict.update({orien_list[i]:deepcopy(pose)})
+        return grasp_positions_dict
+        pass
+
+    def grasp_position_generation_t(self, pose_of_cube:geometry_msgs.msg.Pose, angle = math.pi/2):
+        euler_angle = self.quaternion_to_euler(pose_of_cube.orientation)
+        pose = deepcopy(pose_of_cube)
+        grasp_positions_dict = dict()
+        n_euler_angle = [euler_angle[0] + math.pi, euler_angle[1], euler_angle[2] - math.pi/4]
+        pose.orientation = self.euler_to_quaternion(*n_euler_angle)
+        pose.position.z = pose.position.z + 0.115
+        grasp_positions_dict.update({'topm':deepcopy(pose)})
+        n_euler_angle = [euler_angle[0] + math.pi, euler_angle[1], euler_angle[2] - 3*math.pi/4]
+        pose.orientation = self.euler_to_quaternion(*n_euler_angle)
+        grasp_positions_dict.update({'tops':deepcopy(pose)})
+        pose.position.z = pose_of_cube.position.z + 0.115*math.sin(angle)
         theta = [euler_angle[2] + i*math.pi/2 for i in range(-2, 2)]
         orien_list = ['right', 'front', 'left', 'back']
         for i in range(len(theta)):
@@ -269,7 +292,6 @@ class PandaMoveNode:
             pose.position.y = pose_of_cube.position.y + 0.115*math.sin(theta[i])
             grasp_positions_dict.update({orien_list[i]:deepcopy(pose)})
         return grasp_positions_dict
-        pass
 
     def print_current_pose(self):
         pose = self.group.get_current_pose().pose
