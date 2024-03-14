@@ -288,7 +288,10 @@ class PyramidNode:
             print(f'Ordered List Len in the loop: {len(ordered_cubes)}')
             cube_pos = (ordered_cubes[0])[0]
             cube_orient = (ordered_cubes[0])[1]
-            cube_z_orient = cube_orient[0]
+            if self.is_simulation:
+                cube_z_orient = cube_orient[0]
+            else:
+                cube_z_orient = cube_orient[2]
 
                 
 
