@@ -172,13 +172,14 @@ def spawn_cubes(num_cubes, start_position):
         position = [xpose + col * distance_between_cubes,
                     ypose + row * distance_between_cubes,
                     zpose]
+        position = [random.uniform(0.2, 0.7), random.uniform(-0.3, 0.4), zpose]
         print(f'X: {position[0]}  Y: {position[1]}  Z: {position[2]}')
-        orientation = [0, 0, random.uniform(-math.pi, math.pi)]  # You can modify the orientation if needed
+        orientation = [0, 0, random.uniform(-math.pi, math.pi)] # You can modify the orientation if needed
         print(f'Orientation: {orientation}')
         spawn(i, position, orientation)
 
 if __name__ == "__main__":
     # Specify the number of cubes to spawn and the starting position
-    num_cubes_to_spawn = 9
+    num_cubes_to_spawn = 8
     starting_position = [0.5, 0, 0.84]
     spawn_cubes(num_cubes_to_spawn, starting_position)

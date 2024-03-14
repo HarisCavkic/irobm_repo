@@ -155,6 +155,79 @@ class PyramidNode:
             centroid_list.append(centroid)
 
         return centroid_list
+    
+    def choose_best_pick(self, ref_base_l, pick_pos_l):
+        best_pick_order_l = []
+        smallest_dist_l = []
+        dist_too_low_l = []
+        dist_to_cube = 0.0
+        smallest_dist = math.inf
+
+        # is there enough distance to the base structure for picking
+        enough_dist_base = True
+
+        #the list of the structure base, but with numpy arrays as elements
+        ref_base_l_np = []
+        for i in range(len(ref_base_l)):
+            ref_base_l_np.append(np.array(ref_base_l[i]))
+
+        print(f'len: {len(pick_pos_l)}')
+
+        for i in range(len(pick_pos_l)):
+            dist_to_cube = 0.0
+            pick_pos_np = np.array((pick_pos_l[i])[0])
+            print(f'This cube curr hande: {pick_pos_np}')
+
+            # check if there is enough space to the structure
+            for j in range(len(ref_base_l)):
+                dist = np.linalg.norm(ref_base_l[j] - pick_pos_np)
+                if dist < 0.095:
+                    enough_dist_base = False
+                    break
+            
+            if not enough_dist_base:
+                dist_too_low_l.append(pick_pos_np)
+                continue
+
+            smallest_dist = math.inf
+            # check for smallest distance to all other remaining cubes
+            for k in range(len(pick_pos_l)):
+                if k == i:
+                    continue
+                comp_cube = np.array((pick_pos_l[k])[0])
+                dist_to_cube = np.linalg.norm(comp_cube - pick_pos_np)
+
+                if smallest_dist > dist_to_cube:
+                    smallest_dist = dist_to_cube
+            # sorts the cubes, so the cubes with the biggest distance   s to its closest neighbour gets picked first
+            if smallest_dist >= 0.1:
+                if len(smallest_dist_l) == 0:
+                    smallest_dist_l.append(smallest_dist)
+                    best_pick_order_l.append(pick_pos_l[i])
+                else:
+                    for l in range(len(smallest_dist_l)):
+                        if smallest_dist >= smallest_dist_l[l]:
+                            print(f'I got inserted at {l}')
+                            smallest_dist_l.insert(l, smallest_dist)
+                            best_pick_order_l.insert(l, pick_pos_l[i])
+                            break
+                        elif smallest_dist < smallest_dist_l[l] and not l == (len(smallest_dist_l) - 1):
+                            continue
+                        elif l == (len(smallest_dist_l) - 1):
+                            smallest_dist_l.append(smallest_dist)
+                            best_pick_order_l.append(pick_pos_l[i])
+                            break
+                                
+            else:
+                dist_too_low_l.append(pick_pos_l[i])
+            print(f'Smallest dist: {i}    {smallest_dist}')
+            print(f'Smallest dist List: {smallest_dist_l}')
+
+        print(f'Smallest Dist List:{smallest_dist_l}')
+        print(f'Print best ord: {best_pick_order_l}')
+        return best_pick_order_l
+            
+
                     
     
     def build_pyramid(self):
@@ -182,6 +255,7 @@ class PyramidNode:
             print(f'Found Cubes: {cube_counter}')
         else:
             model_pos_l, model_orient_l = self.model_name_finder('cube')
+            model_SE_l = list(zip(model_pos_l, model_orient_l))
         
         # perpendicular orientation towards the tower base
         perp_orient = [self.default_orient[0], self.default_orient[1],
@@ -194,15 +268,22 @@ class PyramidNode:
         print(goal_cube_centroids)
         remaining_cubes = goal_cube_centroids.copy()
 
+        print('The ordered cubes start')
+        ordered_cubes = self.choose_best_pick(goal_cube_centroids[0:2], model_SE_l)
+        print(f'Ordered List Len: {len(ordered_cubes)}')
         structure_size = len(goal_cube_centroids)
         print(f'The structure needs {structure_size} cubes')
         i = 0
         while len(remaining_cubes) > 0:
+            if len(ordered_cubes) == 0:
+                print('No more pickable cubes around')
+                break
             print(f'{len(remaining_cubes)} are missing in the structure')
             if self.is_simulation:
-                cube_pos = model_pos_l[i]
-                cube_orient = model_orient_l[i]
-                cube_z_orient = (model_orient_l[i])[0]
+                print(f'Ordered List Len in the loop: {len(ordered_cubes)}')
+                cube_pos = (ordered_cubes[0])[0]
+                cube_orient = (ordered_cubes[0])[1]
+                cube_z_orient = cube_orient[0]
 
             else:
                 position_point = responsePC.position[i]
@@ -246,6 +327,7 @@ class PyramidNode:
 
             print("Placed Cube correctly")
             del remaining_cubes[0]
+            del ordered_cubes[0]
             i = i+1
 
 
