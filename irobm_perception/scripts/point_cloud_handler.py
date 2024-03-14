@@ -337,7 +337,8 @@ class PCHandler():
                     o3d.visualization.draw_geometries([selected_cloud, selected_cloud2])
 
 
-            elif len(segment) > 4000:  # 8000
+            elif len(segment) > 8000:  # 8000
+                print("Got cubes aside")
                 cloud1, cloud2 = self.doKMeans(segment)
                 segmented_cubes.append(cloud1)
                 segmented_cubes.append(cloud2)
@@ -347,6 +348,7 @@ class PCHandler():
                     o3d.visualization.draw_geometries([cloud1, cloud2])
 
             else:
+                print("Normal case")
                 # normal case
                 # Create a new PointCloud from the selected points
                 selected_cloud = o3d.geometry.PointCloud()

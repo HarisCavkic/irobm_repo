@@ -270,8 +270,8 @@ class PandaMoveNode:
         pose.orientation = self.euler_to_quaternion(*n_euler_angle)
         grasp_positions_dict.update({'tops':deepcopy(pose)})
         pose.position.z = pose_of_cube.position.z
-        theta = [euler_angle[2] + i*math.pi/2 for i in range(-2, 2)]
-        orien_list = ['right', 'front', 'left', 'back']
+        theta = [euler_angle[2] + i*math.pi/2 for i in range(-2, 1)]
+        orien_list = ['right', 'front', 'left']
         for i in range(len(theta)):
             n_euler_angle = [euler_angle[0] + math.pi/2, euler_angle[1]+theta[i], - math.pi/4]
             pose.orientation = self.euler_to_quaternion(*n_euler_angle, 'rxyz')
