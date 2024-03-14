@@ -246,6 +246,8 @@ class PyramidNode:
         response = self.homing_client(req)
 
         if not self.is_simulation:
+            model_pos_l = []
+            model_orient_l = []
             print("Calling the point cloud handler")
             req = CubeCentroidsRequest()
             responsePC = self.pc_handler(req)
@@ -253,6 +255,10 @@ class PyramidNode:
             rospy.sleep(1)
             cube_counter = len(responsePC.position)
             print(f'Found Cubes: {cube_counter}')
+            for i in range(len(responsePC.position)):
+                model_pos_l.append([responsePC.position[i].x, responsePC.position[i].y, responsePC.position[i].z])
+                model_orient_l.append([responsePC.orientation[i].x, responsePC.orientation[i].y, responsePC.orientation[i].z])
+            model_SE_l = list(zip(model_pos_l, model_orient_l))
         else:
             model_pos_l, model_orient_l = self.model_name_finder('cube')
             model_SE_l = list(zip(model_pos_l, model_orient_l))
@@ -279,18 +285,10 @@ class PyramidNode:
                 print('No more pickable cubes around')
                 break
             print(f'{len(remaining_cubes)} are missing in the structure')
-            if self.is_simulation:
-                print(f'Ordered List Len in the loop: {len(ordered_cubes)}')
-                cube_pos = (ordered_cubes[0])[0]
-                cube_orient = (ordered_cubes[0])[1]
-                cube_z_orient = cube_orient[0]
-
-            else:
-                position_point = responsePC.position[i]
-                cube_pos = [position_point.x, position_point.y, position_point.z]
-                rotation_point = responsePC.orientation[i]
-                cube_orient = [rotation_point.x, rotation_point.y, rotation_point.z]
-                cube_z_orient = cube_orient[2]
+            print(f'Ordered List Len in the loop: {len(ordered_cubes)}')
+            cube_pos = (ordered_cubes[0])[0]
+            cube_orient = (ordered_cubes[0])[1]
+            cube_z_orient = cube_orient[0]
 
                 
 
