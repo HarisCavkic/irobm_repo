@@ -27,6 +27,8 @@ class PyramidNode:
         self.pyramid_center_pos = np.array([0.45, -0.45, 0.0])
         self.cube_dim = 0.045
 
+        self.pick_zone = [[0.2, 0.7], [-0.3, 0.4]]
+
         self.desk_h = 0.787 if self.is_simulation else 0.
 
         self.default_orient = [math.pi, 0.0, -math.pi / 4]
@@ -176,6 +178,9 @@ class PyramidNode:
         for i in range(len(pick_pos_l)):
             dist_to_cube = 0.0
             pick_pos_np = np.array((pick_pos_l[i])[0])
+            in_zone = self.in_pick_zone((pick_pos_l[i])[0])
+            if not in_zone:
+                continue
             print(f'This cube curr hande: {pick_pos_np}')
 
             # check if there is enough space to the structure
@@ -201,6 +206,10 @@ class PyramidNode:
                     smallest_dist = dist_to_cube
             # sorts the cubes, so the cubes with the biggest distance   s to its closest neighbour gets picked first
             if smallest_dist >= 0.1:
+                #shows that cube can be picked normally
+                free_pick = True
+                pick = pick_pos_l[i] + (free_pick,)
+                print(f'This is pick {pick}')
                 if len(smallest_dist_l) == 0:
                     smallest_dist_l.append(smallest_dist)
                     best_pick_order_l.append(pick_pos_l[i])
@@ -226,6 +235,13 @@ class PyramidNode:
         print(f'Smallest Dist List:{smallest_dist_l}')
         print(f'Print best ord: {best_pick_order_l}')
         return best_pick_order_l
+    
+    def in_pick_zone(self, centroid):
+        if centroid[0] > (self.pick_zone[0])[0] and centroid[0] < (self.pick_zone[0])[1] \
+            and centroid[1] > (self.pick_zone[1])[0] and centroid[1] < (self.pick_zone[1])[1]:
+            return True
+        return False
+
             
 
                     
@@ -272,18 +288,43 @@ class PyramidNode:
         tower_pos = [self.pyramid_center_pos[0], self.pyramid_center_pos[1], 0.0225 + self.cube_dim * pyramid_height]
         goal_cube_centroids.extend(self.tower_goal_centroids(tower_pos, 2))
         print(goal_cube_centroids)
+        # A copy to iterate over and remove placed cubs
         remaining_cubes = goal_cube_centroids.copy()
 
-        print('The ordered cubes start')
-        ordered_cubes = self.choose_best_pick(goal_cube_centroids[0:2], model_SE_l)
-        print(f'Ordered List Len: {len(ordered_cubes)}')
+        # Just information
         structure_size = len(goal_cube_centroids)
         print(f'The structure needs {structure_size} cubes')
+
         i = 0
         while len(remaining_cubes) > 0:
+            # scan environment
+            if not self.is_simulation:
+                model_pos_l = []
+                model_orient_l = []
+                req = CubeCentroidsRequest()
+                responsePC = self.pc_handler(req)
+                rospy.sleep(1)
+                cube_counter = len(responsePC.position)
+                for i in range(len(responsePC.position)):
+                    model_pos_l.append([responsePC.position[i].x, responsePC.position[i].y, responsePC.position[i].z])
+                    model_orient_l.append([responsePC.orientation[i].x, responsePC.orientation[i].y, responsePC.orientation[i].z])
+                model_SE_l = list(zip(model_pos_l, model_orient_l))
+                print('Received centroids from perception')
+            else:
+                model_pos_l, model_orient_l = self.model_name_finder('cube')
+                model_SE_l = list(zip(model_pos_l, model_orient_l))
+                print('Reiceived centroids from gazebo models')
+
+            print('The ordered cubes start')
+            ordered_cubes = self.choose_best_pick(goal_cube_centroids[0:2], model_SE_l)
+            print(f'Ordered List Len: {len(ordered_cubes)}')
+            
+
+            # Check if there are pickable cubes
             if len(ordered_cubes) == 0:
                 print('No more pickable cubes around')
                 break
+
             print(f'{len(remaining_cubes)} are missing in the structure')
             print(f'Ordered List Len in the loop: {len(ordered_cubes)}')
             cube_pos = (ordered_cubes[0])[0]
@@ -328,7 +369,7 @@ class PyramidNode:
 
             print("Placed Cube correctly")
             del remaining_cubes[0]
-            del ordered_cubes[0]
+            # del ordered_cubes[0]
             i = i+1
 
 
