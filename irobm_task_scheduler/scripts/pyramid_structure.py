@@ -302,7 +302,7 @@ class PyramidNode:
         i = 0
         while len(remaining_cubes) > 0:
             # scan environment
-            """
+            
             if not self.is_simulation:
                 model_pos_l = []
                 model_orient_l = []
@@ -319,7 +319,7 @@ class PyramidNode:
                 model_pos_l, model_orient_l = self.model_name_finder('cube')
                 model_SE_l = list(zip(model_pos_l, model_orient_l))
                 print('Reiceived centroids from gazebo models')
-            """
+            
 
             print('The ordered cubes start')
             ordered_cubes = self.choose_best_pick(goal_cube_centroids[0:2], model_SE_l)
