@@ -5,6 +5,7 @@ import tf
 import tf.transformations as tft
 import moveit_msgs.msg
 import geometry_msgs.msg
+import cv2
 import math
 import numpy as np
 from gazebo_msgs.srv import GetModelState, GetModelStateRequest
@@ -27,7 +28,7 @@ class PyramidNode:
         self.pyramid_center_pos = np.array([0.45, -0.45, 0.0])
         self.cube_dim = 0.045
 
-        self.pick_zone = [[0.2, 0.7], [-0.3, 0.4]]
+        self.pick_zone = [[0.22, 0.69], [-0.3, 0.3]]
 
         self.desk_h = 0.787 if self.is_simulation else 0.
 
@@ -72,7 +73,7 @@ class PyramidNode:
                 pos = [position_point.x, position_point.y, position_point.z]
                 # orientation as a geometry_msgs/Quaternion
                 orientation = response.pose.orientation
-                orient_quat = [orientation.x, orientation.y, orientation.z, orientation.w]
+                orient_quat = [orientation.z, orientation.y, orientation.x, orientation.w]
                 orient_rad = self.quaternion_to_radians(orient_quat)
                 rospy.loginfo(f"Model '{model_name}' - Position: {pos}, Orientation: {orient_rad}")
                 orient_deg = [math.degrees(angle) for angle in orient_rad]
@@ -261,6 +262,7 @@ class PyramidNode:
         req = HomingRequest()
         response = self.homing_client(req)
 
+        '''
         if not self.is_simulation:
             model_pos_l = []
             model_orient_l = []
@@ -278,6 +280,7 @@ class PyramidNode:
         else:
             model_pos_l, model_orient_l = self.model_name_finder('cube')
             model_SE_l = list(zip(model_pos_l, model_orient_l))
+        '''
         
         # perpendicular orientation towards the tower base
         perp_orient = [self.default_orient[0], self.default_orient[1],
@@ -323,18 +326,15 @@ class PyramidNode:
             # Check if there are pickable cubes
             if len(ordered_cubes) == 0:
                 print('No more pickable cubes around')
-                break
+                print('Please place new cubes and enter afterwards.')
+                key_press = input()
+                continue
 
             print(f'{len(remaining_cubes)} are missing in the structure')
             print(f'Ordered List Len in the loop: {len(ordered_cubes)}')
             cube_pos = (ordered_cubes[0])[0]
             cube_orient = (ordered_cubes[0])[1]
-            if self.is_simulation:
-                cube_z_orient = cube_orient[0]
-            else:
-                cube_z_orient = cube_orient[2]
-
-                
+            cube_z_orient = cube_orient[2]
 
             cube_pos[2] = 0.0225
             cube_yaw = (cube_z_orient + 2*math.pi) % (math.pi/2)
@@ -371,6 +371,8 @@ class PyramidNode:
             del remaining_cubes[0]
             # del ordered_cubes[0]
             i = i+1
+        
+        print('The structure has been fully build')
 
 
 if __name__ == '__main__':
