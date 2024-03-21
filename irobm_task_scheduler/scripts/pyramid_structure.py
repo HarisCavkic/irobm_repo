@@ -21,7 +21,7 @@ class PyramidNode:
     def __init__(self):
         rospy.init_node('cube_tower_node', log_level=rospy.DEBUG)
 
-        self.is_simulation = True
+        self.is_simulation = False
 
         self.num_of_cubes = 7
         self.pyramid_center_pos = np.array([0.45, -0.45, 0.0])
@@ -261,6 +261,7 @@ class PyramidNode:
         req = HomingRequest()
         response = self.homing_client(req)
 
+        
         if not self.is_simulation:
             model_pos_l = []
             model_orient_l = []
@@ -278,6 +279,7 @@ class PyramidNode:
         else:
             model_pos_l, model_orient_l = self.model_name_finder('cube')
             model_SE_l = list(zip(model_pos_l, model_orient_l))
+        
         
         # perpendicular orientation towards the tower base
         perp_orient = [self.default_orient[0], self.default_orient[1],
@@ -298,6 +300,7 @@ class PyramidNode:
         i = 0
         while len(remaining_cubes) > 0:
             # scan environment
+            """
             if not self.is_simulation:
                 model_pos_l = []
                 model_orient_l = []
@@ -314,6 +317,7 @@ class PyramidNode:
                 model_pos_l, model_orient_l = self.model_name_finder('cube')
                 model_SE_l = list(zip(model_pos_l, model_orient_l))
                 print('Reiceived centroids from gazebo models')
+            """
 
             print('The ordered cubes start')
             ordered_cubes = self.choose_best_pick(goal_cube_centroids[0:2], model_SE_l)

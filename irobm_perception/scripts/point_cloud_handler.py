@@ -41,9 +41,10 @@ class PCHandler():
         rospy.on_shutdown(self.shutdown_procedure)
         self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
         self.home_position = [.5, 0,  0.5, [3.1415, 0, -0.8], True]
-        self.positions = [[.5, 0, 0.5, [3.1415, 0, -0.8], True],
-                        [.5, -0.1, 0.5, [3.1415, 0, .8], True],
-                        [.5, 0.1, 0.5, [3.1415, 0, -1.6], True],
+        self.positions = [[.4, 0, 0.5, [3.1415, 0, -0.8], True],[.5, 0, 0.5, [3.1415, 0, -0.8], True],[.6, 0, 0.5, [3.1415, 0, -0.8], True],
+                        
+                         #[.5, -0.1, 0.5, [3.1415, 0, .8], True],
+                         #[.5, 0.1, 0.5, [3.1415, 0, -2.4], True],
             #[.5,.4, 0.5, [3.1415, -0.7, -math.pi/2 - 0.15], True],
                   #        [.5,-.4, .4, [3.1415, -0.4, 1], True],
                           
@@ -70,12 +71,12 @@ class PCHandler():
 
     def callback(self, pc2_msg):
         # self.current_cloud = pc2_msg
-        if not self.reconfigured_clien:
-            self.reconfig_client.update_configuration({"auto_exposure_gain" : False})
-            self.reconfig_client.update_configuration({"gain" : 1})
-            self.reconfig_client.update_configuration({"exposure" : 50})
-            self.reconfig_client.update_configuration({"brightness" : 6})
-            self.reconfigured_clien = True
+        #if not self.reconfigured_clien:
+            #self.reconfig_client.update_configuration({"auto_exposure_gain" : False})
+            #self.reconfig_client.update_configuration({"gain" : 1})
+            #self.reconfig_client.update_configuration({"exposure" : 50})
+            #self.reconfig_client.update_configuration({"brightness" : 6})
+            #self.reconfigured_clien = True
 
         if self.save_signal:
             try:
@@ -88,6 +89,7 @@ class PCHandler():
                 self.save_signal = False
 
     def point_cloud_handle(self, req):
+        self.current_cloud = None
         self.check_service_and_process_positions(visualize=False)
 
         print("Trying to go to approximated positions")
@@ -470,12 +472,9 @@ class PCHandler():
 
 
 if __name__ == '__main__':
-    try:
-        simulation_topic = "/zed2/point_cloud/cloud_registered"
-        real_robot_topic = "/zed2/zed_node/point_cloud/cloud_registered"
-        pch = PCHandler(real_robot_topic)
-        # dm.create_voronoi()
-        rospy.spin()
-    except rospy.ROSInterruptException as exc:
-        print("Something went wront")
-        print(exc)
+    simulation_topic = "/zed2/point_cloud/cloud_registered"
+    real_robot_topic = "/zed2/zed_node/point_cloud/cloud_registered"
+    pch = PCHandler(real_robot_topic)
+    # dm.create_voronoi()
+    rospy.spin()
+    

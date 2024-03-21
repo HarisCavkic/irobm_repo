@@ -24,7 +24,7 @@ class PCHandler():
         self.combined_pcd = None
         self.transformations = None
         # initial setup
-        self.check_service_and_process_positions(visualize=True)
+        self.check_service_and_process_positions(visualize=False)
         # todo: need current positions of the robot to calculate the offset to the objects
 
     def shutdown_procedure(self):
@@ -156,7 +156,7 @@ class PCHandler():
         for i in range(0, max_labels + 1):
             indices_to_extract = np.where(labels == i)
             print("LABEL: ", i, "NR points: ", len(indices_to_extract[0]))
-            if len(indices_to_extract[0]) < 500:
+            if len(indices_to_extract[0]) < 1200:
                 # cant be cube must be outliers
                 continue
             # Extract points based on indices
@@ -184,7 +184,7 @@ class PCHandler():
                     o3d.visualization.draw_geometries([selected_cloud, selected_cloud2])
 
 
-            elif len(segment) > 4000:  # 8000
+            elif len(segment) > 8000:  # 8000
                 cloud1, cloud2 = self.doKMeans(segment)
                 segmented_cubes.append(cloud1)
                 segmented_cubes.append(cloud2)
