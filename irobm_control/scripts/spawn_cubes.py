@@ -166,7 +166,7 @@ def spawn_cubes(num_cubes, start_position):
         Spawning(model_name, model_xml, "", cube_pose, "world")
         rospy.loginfo("%s was spawned in Gazebo", model_name)
 
-    cube_id = 4
+    cube_id = 8
     for i in range(num_cubes):
         row = i // 3  # Assuming 5 columns in the grid
         col = i % 3
@@ -182,6 +182,6 @@ def spawn_cubes(num_cubes, start_position):
 
 if __name__ == "__main__":
     # Specify the number of cubes to spawn and the starting position
-    num_cubes_to_spawn = 4
+    num_cubes_to_spawn = 8
     starting_position = [0.5, 0, 0.84]
     spawn_cubes(num_cubes_to_spawn, starting_position)
