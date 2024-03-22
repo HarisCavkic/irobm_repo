@@ -8,6 +8,7 @@ import tf.transformations as tft
 import moveit_commander
 import moveit_commander.robot as mr
 import moveit_msgs.msg
+from moveit_msgs.msg import Constraints, OrientationConstraint
 import geometry_msgs.msg
 import math
 from gazebo_msgs.msg import ModelState
@@ -66,8 +67,12 @@ class PandaMoveNode:
             orientation = [math.pi, 0.0, -math.pi / 4]
         else:
             orientation = [req.orientation[0], req.orientation[1], req.orientation[2]]
-
-        self.move_panda_to_position(position, orientation)
+        
+        z_min = req.z_constraint
+        if not(z_min == 0.0):
+            self.move_panda_to_position(position, orientation, z_min=z_min)
+        else:
+            self.move_panda_to_position(position, orientation)
 
         response = MoveToResponse()
         response.success = True
@@ -145,7 +150,7 @@ class PandaMoveNode:
             orientation_euler = common_orientation_euler[i]
             self.move_panda_to_position(position, orientation_euler)
 
-    def move_panda_to_position(self, position, euler_angles, model = 'sxyz'):
+    def move_panda_to_position(self, position, euler_angles, model = 'sxyz', z_min = 0.115):
         # Set the target pose for the end-effector
         target_pose = geometry_msgs.msg.Pose()
         target_pose.position.x = position[0]
@@ -164,8 +169,24 @@ class PandaMoveNode:
 
         self.group.set_pose_target(target_pose)
 
+        # Create constraints
+        constraints = Constraints()
+
+        # Add position constraints if z_min and z_max are provided
+        position_constraint = moveit_msgs.msg.PositionConstraint()
+        position_constraint.header.frame_id = self.group.get_planning_frame()
+        position_constraint.link_name = self.group.get_end_effector_link()
+        position_constraint.constraint_region.primitive_poses.append(target_pose)
+        position_constraint.constraint_region.primitive_poses[0].position.z = z_min
+        position_constraint.weight = 0.7
+        constraints.position_constraints.append(position_constraint)
+
+        self.group.set_path_constraints(constraints)
+
         # Plan and execute the motion
         plan = self.group.go(wait=True)
+
+        self.group.clear_path_constraints()
 
     def execute_traj(self, positions_list, orientations_euler_list):
         if len(positions_list) != len(orientations_euler_list):

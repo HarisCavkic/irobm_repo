@@ -80,6 +80,7 @@ class HigherLvLControlNode:
         req.position = Point(*init_pos)
         req.orientation = orient
         req.w_orient = True
+        req.z_constraint = 0.2
         response = self.move_to_client(req)
 
         if task == 'pick':
@@ -90,6 +91,7 @@ class HigherLvLControlNode:
             req.position = Point(*pick_pos)
             req.orientation = orient
             req.w_orient = True
+            req.z_constraint = 0.0
             response = self.move_to_client(req)
 
             req = GraspRequest()
@@ -112,6 +114,7 @@ class HigherLvLControlNode:
             req.position = Point(*place_pos)
             req.orientation = orient
             req.w_orient = True
+            req.z_constraint = 0.0
             response = self.move_to_client(req)
 
             req = GripperWidthRequest()
@@ -126,6 +129,7 @@ class HigherLvLControlNode:
         req.position = Point(*init_pos)
         req.orientation = orient
         req.w_orient = True
+        req.z_constraint = 0.0
         response = self.move_to_client(req)
 
         return True

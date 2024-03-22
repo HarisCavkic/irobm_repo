@@ -1,6 +1,7 @@
 #Request
 geometry_msgs/Point position
 float64[3] orientation
+float64 z_constraint
 bool w_orient
 ---
 #Response
