@@ -22,7 +22,7 @@ class PyramidNode:
     def __init__(self):
         rospy.init_node('cube_tower_node', log_level=rospy.DEBUG)
 
-        self.is_simulation = False
+        self.is_simulation = True
 
         self.num_of_cubes = 7
         self.pyramid_center_pos = np.array([0.45, -0.45, 0.0])
@@ -119,7 +119,7 @@ class PyramidNode:
 
     # creates a list of goal centroids for the pyramid with the right placing order
     def pyramid_goal_centroids(self, center_pos, height):
-        padding = 0.005 # value between cubes
+        padding = 0.008 # value between cubes
         
         dist_between_cubes = padding + self.cube_dim
         x_offset_odd = math.cos(math.pi/4) * dist_between_cubes
@@ -159,6 +159,9 @@ class PyramidNode:
 
         return centroid_list
     
+    # chooses the best order for the cube to be picked in while also getting the correct orientation to pick it,
+    # even when another cube is touching it
+
     def choose_best_pick(self, ref_base_l, pick_pos_l):
         best_pick_order_l = []
         smallest_dist_l = []
@@ -182,7 +185,7 @@ class PyramidNode:
             in_zone = self.in_pick_zone((pick_pos_l[i])[0])
             if not in_zone:
                 continue
-            print(f'This cube curr hande: {pick_pos_np}')
+            print(f'This cube curr handel: {pick_pos_np}')
 
             # check if there is enough space to the structure
             for j in range(len(ref_base_l)):
@@ -196,46 +199,121 @@ class PyramidNode:
                 continue
 
             smallest_dist = math.inf
+            con_vec = None
+            closest_cube = None
             # check for smallest distance to all other remaining cubes
             for k in range(len(pick_pos_l)):
                 if k == i:
                     continue
-                comp_cube = np.array((pick_pos_l[k])[0])
-                dist_to_cube = np.linalg.norm(comp_cube - pick_pos_np)
+                comp_cube = pick_pos_l[k]
+                comp_pos_np = np.array(comp_cube[0])
+                dist_to_cube = np.linalg.norm(comp_pos_np - pick_pos_np)
 
                 if smallest_dist > dist_to_cube:
                     smallest_dist = dist_to_cube
+                    con_vec = comp_pos_np - pick_pos_np
+                    closest_cube = comp_cube
             # sorts the cubes, so the cubes with the biggest distance   s to its closest neighbour gets picked first
             if smallest_dist >= 0.1:
-                #shows that cube can be picked normally
-                free_pick = True
-                pick = pick_pos_l[i] + (free_pick,)
+                # adds the best gripper orientation
+                orient = list((pick_pos_l[i])[1])
+                gripper_orient = self.best_orientation(orient)
+                pick = pick_pos_l[i] + (gripper_orient,)
+
                 print(f'This is pick {pick}')
                 if len(smallest_dist_l) == 0:
                     smallest_dist_l.append(smallest_dist)
-                    best_pick_order_l.append(pick_pos_l[i])
+                    best_pick_order_l.append(pick)
                 else:
                     for l in range(len(smallest_dist_l)):
                         if smallest_dist >= smallest_dist_l[l]:
                             print(f'I got inserted at {l}')
                             smallest_dist_l.insert(l, smallest_dist)
-                            best_pick_order_l.insert(l, pick_pos_l[i])
+                            best_pick_order_l.insert(l, pick)
                             break
                         elif smallest_dist < smallest_dist_l[l] and not l == (len(smallest_dist_l) - 1):
                             continue
                         elif l == (len(smallest_dist_l) - 1):
                             smallest_dist_l.append(smallest_dist)
-                            best_pick_order_l.append(pick_pos_l[i])
+                            best_pick_order_l.append(pick)
                             break
                                 
             else:
-                dist_too_low_l.append(pick_pos_l[i])
+                # adds the best gripper orientation
+                print(f'Iter is {i}')
+                orient = list((pick_pos_l[i])[1])
+                gripper_orient = self.best_orientation(orient, connection_vec=con_vec, orient2=closest_cube[1])
+
+                pick = pick_pos_l[i] + (gripper_orient,)
+
+                if len(smallest_dist_l) == 0:
+                    smallest_dist_l.append(smallest_dist)
+                    best_pick_order_l.append(pick)
+                else:
+                    for l in range(len(smallest_dist_l)):
+                        if smallest_dist >= smallest_dist_l[l]:
+                            print(f'I got inserted at {l}')
+                            smallest_dist_l.insert(l, smallest_dist)
+                            best_pick_order_l.insert(l, pick)
+                            break
+                        elif smallest_dist < smallest_dist_l[l] and not l == (len(smallest_dist_l) - 1):
+                            continue
+                        elif l == (len(smallest_dist_l) - 1):
+                            smallest_dist_l.append(smallest_dist)
+                            best_pick_order_l.append(pick)
+                            break
             print(f'Smallest dist: {i}    {smallest_dist}')
             print(f'Smallest dist List: {smallest_dist_l}')
 
         print(f'Smallest Dist List:{smallest_dist_l}')
         print(f'Print best ord: {best_pick_order_l}')
         return best_pick_order_l
+    
+    def best_orientation(self, orient1, connection_vec=None, orient2=None, occluded=False):
+        cube_yaw = (orient1[2] + 2*math.pi) % (math.pi/2)
+        print(f'Yaw: {(cube_yaw * 180)/ math.pi}')
+        if connection_vec is None:
+            if cube_yaw >= math.pi / 4:
+                opposit_rot = math.pi/2 - cube_yaw
+                gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, -opposit_rot])).tolist()
+            else:
+                gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, cube_yaw])).tolist()
+        else:
+            # calculates the angle between the face and the connection vector
+            # this vector would face along the y-axis in default orientation
+            face_vec = np.array([math.sin(cube_yaw), -math.cos(cube_yaw), 0.0])
+            print(f'ConVec: {connection_vec}, FaceVec: {face_vec}')
+            cross_prod = np.cross(connection_vec, face_vec)
+            magn_prod = np.linalg.norm(connection_vec) * np.linalg.norm(face_vec)
+            face_con_angle = math.asin(np.linalg.norm(cross_prod) / magn_prod)
+
+            # calculate the angle between the x-axis and the connection vector
+            y_axis = np.array([0.0, 1.0, 0.0])
+            cross_prod = np.cross(connection_vec, y_axis)
+            magn_prod = np.linalg.norm(connection_vec) * np.linalg.norm(y_axis)
+            y_con_angle = math.asin(np.linalg.norm(cross_prod) / magn_prod)
+
+            print(f'YAngle: {(y_con_angle * 180)/ math.pi}, FaceAngle: {(face_con_angle * 180)/ math.pi}')
+
+            # choose how the gripper should rotate
+            # if y_con_angle <= (math.pi / 4) and face_con_angle <= (math.pi / 4):
+            # elif y_con_angle > (math.pi / 4) and face_con_angle <= (math.pi / 4):
+            # elif y_con_angle <= (math.pi / 4) and face_con_angle > (math.pi / 4):
+            # elif y_con_angle > (math.pi / 4) and face_con_angle > (math.pi / 4):
+            if (face_con_angle <= (math.pi / 4) and cube_yaw <= (math.pi / 4)) or \
+                (face_con_angle <= (math.pi / 4) and cube_yaw > (math.pi / 4)):
+                print('Case 1')
+                rot = math.pi/2 - cube_yaw
+                gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, -rot])).tolist()
+            elif (face_con_angle > (math.pi / 4) and cube_yaw <= (math.pi / 4)) or \
+                (face_con_angle > (math.pi / 4) and cube_yaw > (math.pi / 4)):
+                print('Case 3')
+                rot = cube_yaw
+                gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, rot])).tolist()
+            print(f'The gripper orient is here: {gripper_orient}')
+        return gripper_orient
+            
+
     
     def in_pick_zone(self, centroid):
         if centroid[0] > (self.pick_zone[0])[0] and centroid[0] < (self.pick_zone[0])[1] \
@@ -261,37 +339,16 @@ class PyramidNode:
 
         req = HomingRequest()
         response = self.homing_client(req)
-
-        '''
-        if not self.is_simulation:
-            model_pos_l = []
-            model_orient_l = []
-            print("Calling the point cloud handler")
-            req = CubeCentroidsRequest()
-            responsePC = self.pc_handler(req)
-            print("Done with the point cloud handler")
-            rospy.sleep(1)
-            cube_counter = len(responsePC.position)
-            print(f'Found Cubes: {cube_counter}')
-            for i in range(len(responsePC.position)):
-                model_pos_l.append([responsePC.position[i].x, responsePC.position[i].y, responsePC.position[i].z])
-                model_orient_l.append([responsePC.orientation[i].x, responsePC.orientation[i].y, responsePC.orientation[i].z])
-            model_SE_l = list(zip(model_pos_l, model_orient_l))
-        else:
-            model_pos_l, model_orient_l = self.model_name_finder('cube')
-            model_SE_l = list(zip(model_pos_l, model_orient_l))
-        '''
-        
         
         # perpendicular orientation towards the tower base
         perp_orient = [self.default_orient[0], self.default_orient[1],
                        self.default_orient[2] - math.pi/2 + math.atan2(self.pyramid_center_pos[1], self.pyramid_center_pos[0])]
 
-        pyramid_height = 3
+        pyramid_height = 6
         goal_cube_centroids = self.pyramid_goal_centroids(self.pyramid_center_pos, pyramid_height)
         tower_pos = [self.pyramid_center_pos[0], self.pyramid_center_pos[1], 0.0225 + self.cube_dim * pyramid_height]
         goal_cube_centroids.extend(self.tower_goal_centroids(tower_pos, 2))
-        print(goal_cube_centroids)
+        print(f'The center goals are: {goal_cube_centroids}')
         # A copy to iterate over and remove placed cubs
         remaining_cubes = goal_cube_centroids.copy()
 
@@ -329,25 +386,22 @@ class PyramidNode:
             # Check if there are pickable cubes
             if len(ordered_cubes) == 0:
                 print('No more pickable cubes around')
-                print('Please place new cubes and enter afterwards.')
+                print('Please place new cubes and press Enter afterwards.')
                 key_press = input()
                 continue
 
             print(f'{len(remaining_cubes)} are missing in the structure')
             print(f'Ordered List Len in the loop: {len(ordered_cubes)}')
             cube_pos = (ordered_cubes[0])[0]
-            cube_orient = (ordered_cubes[0])[1]
-            cube_z_orient = cube_orient[2]
-
             cube_pos[2] = 0.0225
-            cube_yaw = (cube_z_orient + 2*math.pi) % (math.pi/2)
+            cube_orient = (ordered_cubes[0])[1]
+            print(ordered_cubes[0])
+            gripper_orient = list((ordered_cubes[0])[2])
+            # cube_z_orient = cube_orient[2]
+
+            # cube_yaw = (cube_z_orient + 2*math.pi) % (math.pi/2)
             print("HEEEEY here is the apperent position and rotations: ", cube_pos, cube_orient)
             print(f"Current goal position: {remaining_cubes[0]}")
-            if cube_yaw >= math.pi / 4:
-                opposit_rot = math.pi/2 - cube_yaw
-                gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, -opposit_rot])).tolist()
-            else:
-                gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, cube_yaw])).tolist()
             print(f'Gripper Orient: {gripper_orient}')
             
             print(f'Cube Pos: {cube_pos}')
@@ -376,6 +430,7 @@ class PyramidNode:
             i = i+1
         
         print('The structure has been fully build')
+
 
 
 if __name__ == '__main__':
