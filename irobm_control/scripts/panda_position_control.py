@@ -15,7 +15,7 @@ from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Point
 from irobm_control.srv import MoveTo, MoveToResponse, BasicTraj, BasicTrajResponse, ArcPath, ArcPathResponse
-from irobm_control.srv import Homing, HomingResponse
+from irobm_control.srv import Homing, HomingResponse, JointLimitCheck,  JointLimitCheckResponse
 from copy import deepcopy
 
 class PandaMoveNode:
@@ -51,8 +51,14 @@ class PandaMoveNode:
         self.basic_traj = rospy.Service('/irobm_control/basic_traj', BasicTraj, self.basic_traj_handler)
         self.arc_path_srv = rospy.Service('/irobm_control/arc_path', ArcPath, self.arc_path_handler)
         self.homing = rospy.Service('irobm_control/homing', Homing, self.home_handler)
+        self.joint_limit_check_srv = rospy.Service('irobm_control/joint_limit_check', JointLimitCheck, self.joint_limit_check_handler)
 
-    
+    def joint_limit_check_handler(self):
+        self.joint_limit_checking()
+        response = JointLimitCheckResponse()
+        response.success = True
+        return response
+
     def home_handler(self, req):
         print("Going HOME")
         self.move_panda_to_joint_position(self.homing_configuration)
@@ -311,7 +317,7 @@ class PandaMoveNode:
             if joint_value[i] > max_limit - math.pi/12 or joint_value[i] < min_limit + math.pi/12:
                 print(f"joint {i+1} is closed to the joint limit!")
                 break
-        self.group.go(self.origin_joint_pose)
+        self.group.go(self.homing_configuration)
         pass
 
     def print_current_pose(self):

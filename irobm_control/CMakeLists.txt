@@ -73,6 +73,7 @@ add_service_files(
   ArcPath.srv
   Homing.srv
   GripperWidth.srv
+  JointLimitCheck.srv
 )
 
 ## Generate actions in the 'action' folder
