@@ -44,6 +44,7 @@ class PandaMoveNode:
 
         self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
         self.homing_configuration = [-0.003883130299572653, -0.18531659259774813, 0.0034981294616078205, -2.1012125574986595, 0.00035676014991842123, 1.913004710985454, 0.7990935928072485]
+        self.joint_limit = [[-2.8972, 2.8972], [-1.8325, 1.8325], [-2.8972, 2.8972], [-3.0717, -0.1221], [-2.8797, 2.8797], [0.4363, 4.6251], [-3.0543, 3.0543]]
 
         self.move_to = rospy.Service('/irobm_control/move_to', MoveTo, self.move_to_handler)
         self.basic_traj = rospy.Service('/irobm_control/basic_traj', BasicTraj, self.basic_traj_handler)
@@ -279,6 +280,17 @@ class PandaMoveNode:
             pose.position.y = pose_of_cube.position.y + 0.115*math.sin(theta[i])
             grasp_positions_dict.update({orien_list[i]:deepcopy(pose)})
         return grasp_positions_dict
+        pass
+
+    def joint_limit_checking(self):
+        joint_value = self.group.get_current_joint_values()
+        for i in range(self.origin_joint_pose.__len__()):
+            min_limit = self.joint_limit[i][0]
+            max_limit = self.joint_limit[i][1]
+            if joint_value[i] > max_limit - math.pi/12 or joint_value[i] < min_limit + math.pi/12:
+                print(f"joint {i+1} is closed to the joint limit!")
+                break
+        self.group.go(self.origin_joint_pose)
         pass
 
     def print_current_pose(self):
