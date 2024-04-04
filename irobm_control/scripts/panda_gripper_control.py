@@ -49,12 +49,13 @@ class PandaGripperNode:
         self.curr_velocity = data.velocity[0] + data.velocity[1]
         # print(f'Positions width is {data.position}')
 
+    # returns the current state of the gripper
     def gripper_state_handler(self, req):
         res = GripperWidthResponse()
         res.width = self.curr_pos
         res.velocity = self.curr_velocity
         return res
-
+    
     def open_gripper_handler(self, req):
         # Position for the fully opened gripper is 0.04(0.04 in both directions, so fully open it is 0.08)
         self.set_gripper_position(0.04)
@@ -87,7 +88,7 @@ class PandaGripperNode:
         response.success = True
         return response
         
-
+    # controls the gripper width. The gripper width can be assigned freely
     def set_gripper_width_handler(self, req):
         width = req.width
         effort = req.effort
@@ -101,6 +102,7 @@ class PandaGripperNode:
         response.success = True
         return response
 
+    # used as a general function to control the gripper(opening, closing, controlling width)
     def set_gripper_position(self, position, effort=10):
         # Use MoveIt! action to set gripper position
         print("Set Position")
@@ -113,6 +115,7 @@ class PandaGripperNode:
         self.gripper_client.wait_for_result()
         # result returned
 
+    # grasps with a certain force, used to pick up objects
     def grasp(self, width, force, epsilon=0.05, speed=0.05):
         print(f'Width:{width}, Speed:{speed}, Force:{force}')
         goal = GraspGoal()

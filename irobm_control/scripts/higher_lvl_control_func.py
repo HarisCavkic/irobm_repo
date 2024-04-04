@@ -57,13 +57,15 @@ class HigherLvLControlNode:
         return response
 
 
-
+    # this is a utility function to handle picking and placing cubes with a given position and orientation
+    # task: decides if it is about picking or placing
     def pick_n_place(self, pos, orient, task):
         init_dist = np.array([0.0, 0.0, 0.15])
 
         pos_np = np.array(pos)
         orient_np = np.array(orient)
 
+        # define positions to get a clean pick or place done with an initial position above the actual pick or place position
         init_pos= (pos_np + self.gripper_offset + init_dist).tolist()
         print(f'Init Pose: {init_pos}')
 
@@ -76,6 +78,7 @@ class HigherLvLControlNode:
         pick_pos = pick_pos_np.tolist()
         place_pos = place_pos_np.tolist()
 
+        # Execute the picking or placing
         req = MoveToRequest()
         req.position = Point(*init_pos)
         req.orientation = orient
@@ -101,6 +104,7 @@ class HigherLvLControlNode:
 
             req = GripperWidthRequest()
             response = self.gripper_status_client(req)
+            # check if the cube was missed
             if response.width <= 0.025:
                 return False
 
@@ -119,6 +123,7 @@ class HigherLvLControlNode:
 
             req = GripperWidthRequest()
             response = self.gripper_status_client(req)
+            # check if the cube got dropped inbetween
             if response.width <= 0.025:
                 return False
 

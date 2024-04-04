@@ -43,10 +43,12 @@ class PandaMoveNode:
             print('Position Control in real')
             self.desk_h = np.array([0.0, 0.0, 0.0])
 
+        # define fixed values
         self.origin_joint_pose = [0, -math.pi/4, 0, -3*math.pi/4, 0, math.pi/2, math.pi/4]
         self.homing_configuration = [-0.003883130299572653, -0.18531659259774813, 0.0034981294616078205, -2.1012125574986595, 0.00035676014991842123, 1.913004710985454, 0.7990935928072485]
         self.joint_limit = [[-2.8972, 2.8972], [-1.8325, 1.8325], [-2.8972, 2.8972], [-3.0717, -0.1221], [-2.8797, 2.8797], [0.4363, 4.6251], [-3.0543, 3.0543]]
 
+        # initialize services
         self.move_to = rospy.Service('/irobm_control/move_to', MoveTo, self.move_to_handler)
         self.basic_traj = rospy.Service('/irobm_control/basic_traj', BasicTraj, self.basic_traj_handler)
         self.arc_path_srv = rospy.Service('/irobm_control/arc_path', ArcPath, self.arc_path_handler)
@@ -75,11 +77,7 @@ class PandaMoveNode:
         else:
             orientation = [req.orientation[0], req.orientation[1], req.orientation[2]]
         
-        z_min = req.z_constraint
-        if not(z_min == 0.0):
-            self.move_panda_to_position(position, orientation, z_min=z_min)
-        else:
-            self.move_panda_to_position(position, orientation)
+        self.move_panda_to_position(position, orientation)
 
         response = MoveToResponse()
         response.success = True
@@ -151,13 +149,14 @@ class PandaMoveNode:
         except rospy.ServiceException as e:
             rospy.logerr("Service call failed: %s" % e)
 
+    #utilizes the move_panda_to_position to follow a trajectory
     def move_to_positions(self, positions, common_orientation_euler):
         for i, position in enumerate(positions):
             # Use common orientation for all positions except the last one
             orientation_euler = common_orientation_euler[i]
             self.move_panda_to_position(position, orientation_euler)
 
-    def move_panda_to_position(self, position, euler_angles, model = 'sxyz', z_min = 0.115):
+    def move_panda_to_position(self, position, euler_angles, model = 'sxyz'):
         # Set the target pose for the end-effector
         target_pose = geometry_msgs.msg.Pose()
         target_pose.position.x = position[0]
@@ -176,25 +175,10 @@ class PandaMoveNode:
 
         self.group.set_pose_target(target_pose)
 
-        # Create constraints
-        constraints = Constraints()
-
-        # Add position constraints if z_min and z_max are provided
-        position_constraint = moveit_msgs.msg.PositionConstraint()
-        position_constraint.header.frame_id = self.group.get_planning_frame()
-        position_constraint.link_name = self.group.get_end_effector_link()
-        position_constraint.constraint_region.primitive_poses.append(target_pose)
-        position_constraint.constraint_region.primitive_poses[0].position.z = z_min
-        position_constraint.weight = 0.7
-        constraints.position_constraints.append(position_constraint)
-
-        self.group.set_path_constraints(constraints)
-
         # Plan and execute the motion
         plan = self.group.go(wait=True)
 
-        self.group.clear_path_constraints()
-
+    # uses the moveIt waypoints to follow a trajectory
     def execute_traj(self, positions_list, orientations_euler_list):
         if len(positions_list) != len(orientations_euler_list):
             print("Positions and orientation list must have the same length")
@@ -207,7 +191,9 @@ class PandaMoveNode:
 
         plan, fraction = self.group.compute_cartesian_path(waypoints, 0.01, 0.0)
         self.group.execute(plan, wait=True)
-
+    
+    # helper function for the execute_traj function
+    # creates poses for the waypoints
     def _create_pose(self, position, orientation_euler):
         target_pose = geometry_msgs.msg.Pose()
         target_pose.position.x = position[0]
@@ -222,6 +208,7 @@ class PandaMoveNode:
 
         return target_pose
 
+    # function to test the functions offered by the class. Not used except for debug cases
     def run(self):
         # Set the initial position of the Panda arm in Gazebo
         initial_position = [0.3, 0.0, 1.3]  # Adjust as needed

@@ -99,6 +99,7 @@ class CubeTowerNode:
     
     def build_tower(self):
         print('Start the build')
+        #Follows an arc path around the centrer
         req = ArcPathRequest()
         req.center_of_circle = [0.5, 0.0, 0.0]
         req.radius = 0.2
@@ -112,6 +113,7 @@ class CubeTowerNode:
         req = HomingRequest()
         response = self.homing_client(req)
 
+        # only uses the perception service for the camera in the real world
         if not self.is_simulation:
             print("Calling the point cloud handler")
             req = CubeCentroidsRequest()
@@ -121,13 +123,12 @@ class CubeTowerNode:
             cube_counter = len(responsePC.position)
             print(f'Found Cubes: {cube_counter}')
 
+        #iterates over the predefined or extracted cubes from the scene
         for i in range(cube_counter):
             if self.is_simulation:
                 cube_name = 'cube_' + str(i)
                 cube_pos, cube_orient = self.extract_model_state(cube_name)
-                cube_z_orient = cube_orient[0] 
-                
-
+                cube_z_orient = cube_orient[0]         
             else:
                 position_point = responsePC.position[i]
                 cube_pos = [position_point.x, position_point.y, position_point.z]
@@ -136,7 +137,7 @@ class CubeTowerNode:
                 cube_z_orient = cube_orient[2]
 
                 
-
+            # calculate the correct gripper orientation to get cubes
             cube_pos[2] = 0.0225
             cube_yaw = (cube_z_orient + 2*math.pi) % (math.pi/2)
             print("HEEEEY here is the apperent position and rotations: ", cube_pos, cube_orient)
@@ -147,6 +148,7 @@ class CubeTowerNode:
                 gripper_orient = (np.array(self.default_orient) + np.array([0.0, 0.0, cube_yaw])).tolist()
             print(f'Gripper Orient: {gripper_orient}')
             
+            # execute the picking
             print(f'Cube Pos: {cube_pos}')
             req = PickNPlaceRequest()
             req.cube_centroid = Point(*cube_pos)
@@ -154,6 +156,7 @@ class CubeTowerNode:
             req.task = 'pick'
             response = self.pick_n_place_client(req)
             
+            # execute the placing of a cube
             curr_height = i * self.cube_dim + self.cube_dim / 2
             place_pos = (self.tower_pos + np.array([0.0, 0.0, curr_height])).tolist()
             req = PickNPlaceRequest()
@@ -162,6 +165,7 @@ class CubeTowerNode:
             req.task = 'place'
             response = self.pick_n_place_client(req)
 
+            # get to pre defined home position to avoid joint limits
             req = HomingRequest()
             response = self.homing_client(req)
 
