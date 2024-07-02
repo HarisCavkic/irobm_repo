@@ -98,7 +98,7 @@ The project successfully built a tower of five cubes and a pyramid of seven cube
   <table>
     <tr>
       <td><img src="images/struc_1.jpg" alt="Parallel Cubes" /></td>
-      <td><img src="images/struc_2.jpg" alt="Diagonal Cubes" /></td>
+      <td><img src="images/struc_2_resized.jpg" alt="Diagonal Cubes" /></td>
     </tr>
   </table>
   <p><em>Figure 5: The figures show the structures which were built during the final demonstration. The left figure is the first try and shows a smaller pyramid with a tower of two on top. The right figure shows a pyramid of five with a tower of two on top. Both were built by providing new cubes during the demonstration </em></p>
