@@ -1,4 +1,4 @@
-# ProjectLab IRM Final Report
+# ProjectLab Intelligent Robot Manipulation
 
 This repository contains the code and documentation for the ProjectLab IRM project. The project focuses on building a tower and a pyramid with cubes using a robotic arm in a simulated and real environment. The project leverages ROS, MoveIt, and perception algorithms to accomplish the tasks.
 
