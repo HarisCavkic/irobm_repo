@@ -19,7 +19,11 @@ This repository contains the code and documentation for the ProjectLab IRM proje
 
 The primary goal of this project was to build a tower with cubes using a robotic arm. A Docker image with an installed ROS workspace was provided, which included packages for a Gazebo simulation environment, a script to spawn cubes, and a camera for receiving point cloud or RGB images. The project was divided into two main parts: perception and control.
 
-![Starting Environment](images/starting_environment.png)
+<div align="center">
+  <img src="images/ex_env.png" alt="Starting Environment" />
+  <p><em>Figure 1: A simple starting environment which could be used to build a structure.</em></p>
+</div>
+
 
 The secondary goal was to extend the infrastructure to build a pyramid out of cubes. The perception group focused on refining the cube detection, while the control group handled error management within movements.
 
@@ -29,15 +33,17 @@ The secondary goal was to extend the infrastructure to build a pyramid out of cu
 
 Perception is about enabling the robot to "see" and make sense of its surroundings using sensors and cameras. The following methods and technologies were used to achieve this:
 
-![Perception Pipeline](images/perception_pipeline.png)
-
 #### Issues
 
 - **Point Cloud Complexity:** Handling dense and unstructured point clouds was challenging, impacting the efficiency of data processing and object detection.
 - **Transformation from Camera to Base Frame:** Difficulties in transforming point cloud data accurately from the camera's coordinate frame to the robot's base coordinate frame.
 - **Camera Parameters Adjustment:** Transitioning from 720p to 2K resolution with neural network preprocessing for better accuracy required extensive experimentation.
 
-![Point Cloud Issues](images/point_cloud_issues.png)
+<div align="center">
+  <img src="images/PC_distortion.JPG" alt="Starting Environment" />
+  <p><em>Figure 2: Combined point clouds distortion </em></p>
+</div>
+
 
 #### Pipeline
 
@@ -46,10 +52,26 @@ Perception is about enabling the robot to "see" and make sense of its surroundin
 3. **Outlier Removal:** Outliers are removed using a nearest neighbors approach.
 4. **Desk Removal:** Desk is filtered out by removing values below a certain height threshold.
 5. **Segmentation with DBScan:** Point clouds are segmented to identify individual cubes.
-6. **Model Alignment and ICP:** Cubes are modeled and aligned using the Iterative Closest Point (ICP) algorithm.
-7. **Final Transformation:** The position and orientation of each cube are determined for accurate placement.
+6. **KMeans clustering**: to detect cluttered cubes 
+7. **Model Alignment and ICP:** Cubes are modeled and aligned using the Iterative Closest Point (ICP) algorithm.
+8. **Final Transformation:** The position and orientation of each cube are determined for accurate placement.
 
-![Segmentation](images/segmentation.png)
+<div align="center">
+  <table>
+    <tr>
+      <td><img src="images/KN1.JPG" alt="Parallel Cubes" /></td>
+      <td><img src="images/KN2.JPG" alt="Diagonal Cubes" /></td>
+      <td><img src="images/KN3.JPG" alt="Stacked Cubes" /></td>
+    </tr>
+    <tr>
+      <td><em>Figure 3a: Parallel Cubes</em></td>
+      <td><em>Figure 3b: Diagonal Cubes</em></td>
+      <td><em>Figure 3c: Stacked Cubes</em></td>
+    </tr>
+  </table>
+  <p><em>Figure 3: KMeans Clustering of cubes </em></p>
+
+</div>
 
 ### Control
 
@@ -63,14 +85,25 @@ Control involves moving the robot to specific positions and using the gripper fo
 
 The task scheduler combines the control and perception components to build structures. It generates goal positions for cubes and ensures the structure is completed by picking and placing cubes in an optimal order. The scheduler handles the overall workflow, including re-scanning for cubes and sorting them for best pickable order.
 
-![Task Scheduler](images/task_scheduler.png)
+<div align="center">
+  <img src="images/task_scheduler_flowchart.png" alt="Starting Environment" />
+  <p><em>Figure 4: The flowchart shows the structure of the task scheduler which is used to combine perception and control to build a structure. In this chart, the squared, green nodes are for parts that are handled by the scheduler, the diamond-shaped, blue node represents a loop while the red hexagons are for service calls to the control or perception packages. </em></p>
+</div>
 
 ## Results
 
 The project successfully built a tower of five cubes and a pyramid of seven cubes. The infrastructure can build various structures depending on the cube arrangements. However, limitations such as position estimation errors and missing collision detection were encountered.
 
-![Tower](images/tower.png)
-![Pyramid](images/pyramid.png)
+<div align="center">
+  <table>
+    <tr>
+      <td><img src="images/struc_1.jpg" alt="Parallel Cubes" /></td>
+      <td><img src="images/struc_2.jpg" alt="Diagonal Cubes" /></td>
+    </tr>
+  </table>
+  <p><em>Figure 5: The figures show the structures which were built during the final demonstration. The left figure is the first try and shows a smaller pyramid with a tower of two on top. The right figure shows a pyramid of five with a tower of two on top. Both were built by providing new cubes during the demonstration </em></p>
+</div>
+
 
 ## Future Work
 
